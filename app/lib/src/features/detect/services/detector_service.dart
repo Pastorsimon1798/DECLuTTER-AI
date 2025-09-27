@@ -11,6 +11,7 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 import '../domain/detection.dart';
 import 'detection_interpreter.dart';
 import 'image_tensor_builder.dart';
+import 'output_tensor_buffer.dart';
 
 /// Loads the object detection model and produces debug detections.
 ///
@@ -225,21 +226,21 @@ class DetectorService {
     return _parseDetections(outputBuffers);
   }
 
-  List<_OutputTensorBuffer> _prepareOutputBuffers(DetectionInterpreter interpreter) {
-    final buffers = <_OutputTensorBuffer>[];
+  List<OutputTensorBuffer> _prepareOutputBuffers(DetectionInterpreter interpreter) {
+    final buffers = <OutputTensorBuffer>[];
     for (var i = 0; i < interpreter.outputCount; i++) {
       final shape = interpreter.outputShape(i);
       final type = interpreter.outputType(i);
-      buffers.add(_OutputTensorBuffer(index: i, shape: shape, type: type));
+      buffers.add(OutputTensorBuffer(index: i, shape: shape, type: type));
     }
     return buffers;
   }
 
-  List<Detection> _parseDetections(List<_OutputTensorBuffer> buffers) {
-    _OutputTensorBuffer? boxesBuffer;
-    _OutputTensorBuffer? classesBuffer;
-    _OutputTensorBuffer? scoresBuffer;
-    _OutputTensorBuffer? countBuffer;
+  List<Detection> _parseDetections(List<OutputTensorBuffer> buffers) {
+    OutputTensorBuffer? boxesBuffer;
+    OutputTensorBuffer? classesBuffer;
+    OutputTensorBuffer? scoresBuffer;
+    OutputTensorBuffer? countBuffer;
 
     for (final buffer in buffers) {
       switch (buffer.index) {
@@ -306,30 +307,47 @@ class DetectorService {
   }
 
   List<List<double>> _castToBoxList(Object data) {
-    if (data is List && data.isNotEmpty && data.first is List) {
-      final first = data.first as List<dynamic>;
-      return first
-          .whereType<List>()
-          .map((entry) => entry.map((value) => _asDouble(value)).toList(growable: false))
-          .toList(growable: false);
-    }
-    return const [];
+    final batch = _unwrapBatch(data);
+    return batch
+        .map((entry) => _toIterable(entry).map(_asDouble).toList(growable: false))
+        .where((entry) => entry.isNotEmpty)
+        .toList(growable: false);
   }
 
   List<double> _castToDoubleList(Object data) {
-    if (data is List && data.isNotEmpty) {
-      final target = data.first;
-      if (target is List) {
-        return target.map((value) => _asDouble(value)).toList(growable: false);
-      }
-      return data.map((value) => _asDouble(value)).toList(growable: false);
+    final batch = _unwrapBatch(data);
+    if (batch.isEmpty) {
+      return const [];
     }
-    return const [];
+    return batch.map(_asDouble).toList(growable: false);
+  }
+
+  Iterable<Object?> _unwrapBatch(Object? data) {
+    final iterable = _toIterable(data);
+    if (iterable.isEmpty) {
+      return const <Object?>[];
+    }
+    final list = iterable.toList(growable: false);
+    if (list.isEmpty) {
+      return const <Object?>[];
+    }
+    final first = list.first;
+    if (first is Iterable) {
+      return first.cast<Object?>();
+    }
+    return list;
+  }
+
+  Iterable<Object?> _toIterable(Object? value) {
+    if (value is Iterable) {
+      return value.cast<Object?>();
+    }
+    return const <Object?>[];
   }
 
   double? _readFirstDouble(Object data) {
-    if (data is List && data.isNotEmpty) {
-      return _asDouble(data.first);
+    for (final value in _toIterable(data)) {
+      return _asDouble(value);
     }
     return null;
   }
@@ -342,39 +360,5 @@ class DetectorService {
       return value ? 1.0 : 0.0;
     }
     return 0.0;
-  }
-}
-
-class _OutputTensorBuffer {
-  _OutputTensorBuffer({
-    required this.index,
-    required this.shape,
-    required this.type,
-  }) : data = _createZeroFilledList(type, shape);
-
-  final int index;
-  final List<int> shape;
-  final TfLiteType type;
-  final Object data;
-
-  static Object _createZeroFilledList(TfLiteType type, List<int> shape) {
-    if (shape.isEmpty) {
-      return _zeroValue(type);
-    }
-    final length = shape.first;
-    final tail = shape.sublist(1);
-    return List.generate(length, (_) => _createZeroFilledList(type, tail));
-  }
-
-  static Object _zeroValue(TfLiteType type) {
-    switch (type) {
-      case TfLiteType.float32:
-      case TfLiteType.float16:
-        return 0.0;
-      case TfLiteType.bool:
-        return false;
-      default:
-        return 0;
-    }
   }
 }

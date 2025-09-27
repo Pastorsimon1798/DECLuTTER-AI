@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'dart:ui';
 
 import 'package:flutter/services.dart';
@@ -233,22 +234,16 @@ class _FixtureDetectionInterpreter implements DetectionInterpreter {
 
     final boxes = outputs[0] as List<dynamic>;
     final boxBatch = boxes[0] as List<dynamic>;
-    final firstBox = boxBatch[0] as List<dynamic>;
-    firstBox[0] = 0.1;
-    firstBox[1] = 0.2;
-    firstBox[2] = 0.65;
-    firstBox[3] = 0.75;
+    boxBatch[0] = Float32List.fromList([0.1, 0.2, 0.65, 0.75]);
 
     final classes = outputs[1] as List<dynamic>;
-    final classBatch = classes[0] as List<dynamic>;
-    classBatch[0] = 1.0;
+    classes[0] = Float32List.fromList([1, 0, 0, 0, 0]);
 
     final scores = outputs[2] as List<dynamic>;
-    final scoreBatch = scores[0] as List<dynamic>;
-    scoreBatch[0] = 0.87;
+    scores[0] = Float32List.fromList([0.87, 0, 0, 0, 0]);
 
     final count = outputs[3] as List<dynamic>;
-    count[0] = 1.0;
+    count[0] = Float32List.fromList([1]);
   }
 }
 
