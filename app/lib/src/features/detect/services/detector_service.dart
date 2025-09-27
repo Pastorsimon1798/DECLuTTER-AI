@@ -10,6 +10,7 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 
 import '../domain/detection.dart';
 import 'detection_interpreter.dart';
+import 'image_tensor_builder.dart';
 
 /// Loads the object detection model and produces debug detections.
 ///
@@ -19,10 +20,14 @@ import 'detection_interpreter.dart';
 /// async flow realistic for the MVP.
 class DetectorService {
 
-  DetectorService({AssetBundle? bundle, DetectionInterpreter? interpreter})
-      : _bundle = bundle ?? rootBundle,
+  DetectorService({
+    AssetBundle? bundle,
+    DetectionInterpreter? interpreter,
+    bool? isMobileOverride,
+  })  : _bundle = bundle ?? rootBundle,
         _providedInterpreter = interpreter,
-        _interpreter = interpreter;
+        _interpreter = interpreter,
+        _isMobileOverride = isMobileOverride;
 
   final AssetBundle _bundle;
   final DetectionInterpreter? _providedInterpreter;
@@ -32,6 +37,16 @@ class DetectorService {
   bool _isInitialized = false;
   bool _useMockDetections = false;
   final bool? _isMobileOverride;
+
+  bool get _isMobilePlatform {
+    if (_isMobileOverride != null) {
+      return _isMobileOverride!;
+    }
+    if (kIsWeb) {
+      return false;
+    }
+    return Platform.isAndroid || Platform.isIOS;
+  }
 
   /// Ensures the model (or fallback) is ready before inference.
   Future<void> initialize() async {
@@ -60,7 +75,7 @@ class DetectorService {
       return;
     }
 
-    if (Platform.isAndroid || Platform.isIOS) {
+    if (_isMobilePlatform) {
       try {
         final interpreter = await TfliteDetectionInterpreter.fromAsset('model/detector.tflite');
         _interpreter = interpreter;
@@ -198,7 +213,7 @@ class DetectorService {
 
     final inputTensor = interpreter.inputShape;
     final inputType = interpreter.inputType;
-    final input = _createInputTensor(image, inputTensor, inputType);
+    final input = ImageTensorBuilder(shape: inputTensor, type: inputType).build(image);
 
     final outputBuffers = _prepareOutputBuffers(interpreter);
     final outputs = <int, Object>{
@@ -208,54 +223,6 @@ class DetectorService {
     interpreter.run(input, outputs);
 
     return _parseDetections(outputBuffers);
-  }
-
-  Object _createInputTensor(img.Image image, List<int> inputShape, TfLiteType type) {
-    if (inputShape.length != 4 || inputShape.first != 1) {
-      throw FlutterError('Expected input shape [1, height, width, channels] but found $inputShape.');
-    }
-
-    final height = inputShape[1];
-    final width = inputShape[2];
-    final channels = inputShape[3];
-
-    final resized = img.copyResize(image, width: width, height: height);
-
-    return List.generate(1, (_) {
-      return List.generate(height, (y) {
-        return List.generate(width, (x) {
-          final pixel = resized.getPixel(x, y);
-          final r = img.getRed(pixel).toDouble();
-          final g = img.getGreen(pixel).toDouble();
-          final b = img.getBlue(pixel).toDouble();
-          final a = img.getAlpha(pixel).toDouble();
-          final values = <num>[];
-          if (channels >= 1) {
-            values.add(_normalizeValue(r, type));
-          }
-          if (channels >= 2) {
-            values.add(_normalizeValue(g, type));
-          }
-          if (channels >= 3) {
-            values.add(_normalizeValue(b, type));
-          }
-          if (channels >= 4) {
-            values.add(_normalizeValue(a, type));
-          }
-          return values;
-        });
-      });
-    });
-  }
-
-  num _normalizeValue(double value, TfLiteType type) {
-    switch (type) {
-      case TfLiteType.float32:
-      case TfLiteType.float16:
-        return value / 255.0;
-      default:
-        return value.round();
-    }
   }
 
   List<_OutputTensorBuffer> _prepareOutputBuffers(DetectionInterpreter interpreter) {
