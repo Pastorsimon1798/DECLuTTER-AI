@@ -22,7 +22,7 @@ flutter pub get
 
 This pulls down the `camera`, `permission_handler`, `image`, and `tflite_flutter` packages needed for the capture + detection debug experience.
 
-Drop your quantized model at `app/assets/model/detector.tflite` with matching labels in `app/assets/model/labels.txt` when you are ready to swap off the mock detections. Without the file, the app loads the bundled `debug_sample_detections.json` so you can still see the overlay and UI flow.
+Drop your quantized model at `app/assets/model/detector.tflite` with matching labels in `app/assets/model/labels.txt` when you are ready to swap off the mock detections. The detector service automatically resizes captured images to the tensor shape reported by the interpreter and normalizes RGB values to `0.0–1.0` for float models (or keeps `0–255` ints for quantized models), so ensure your exported model expects that preprocessing. Without the file, the app loads the bundled `debug_sample_detections.json` so you can still see the overlay and UI flow.
 
 Next, launch the app on a real device or simulator with camera support:
 
