@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io' show File, Platform;
 import 'dart:ui' show Rect, Size;
@@ -16,13 +17,22 @@ import '../domain/detection.dart';
 /// returning mock detections from a JSON asset. This keeps the UI plumbing and
 /// async flow realistic for the MVP.
 class DetectorService {
-  DetectorService({AssetBundle? bundle}) : _bundle = bundle ?? rootBundle;
+  DetectorService({
+    AssetBundle? bundle,
+    FutureOr<Interpreter?> Function()? interpreterFactory,
+    bool? isMobileOverride,
+  })  : _bundle = bundle ?? rootBundle,
+        _interpreterFactory =
+            interpreterFactory ?? (() => Interpreter.fromAsset('model/detector.tflite')),
+        _isMobileOverride = isMobileOverride;
 
   final AssetBundle _bundle;
+  final FutureOr<Interpreter?> Function() _interpreterFactory;
   Interpreter? _interpreter;
   List<String> _labels = const [];
   bool _isInitialized = false;
   bool _useMockDetections = false;
+  final bool? _isMobileOverride;
 
   /// Ensures the model (or fallback) is ready before inference.
   Future<void> initialize() async {
@@ -43,10 +53,17 @@ class DetectorService {
       return;
     }
 
-    if (Platform.isAndroid || Platform.isIOS) {
+    final bool isMobile = _isMobileOverride ?? (Platform.isAndroid || Platform.isIOS);
+
+    if (isMobile) {
       try {
-        _interpreter = await Interpreter.fromAsset('model/detector.tflite');
-        _useMockDetections = false;
+        final interpreter = await _interpreterFactory();
+        if (interpreter != null) {
+          _interpreter = interpreter;
+          _useMockDetections = false;
+        } else {
+          _useMockDetections = true;
+        }
       } catch (error) {
         debugPrint('DetectorService: failed to load model, falling back to mock data: $error');
         _useMockDetections = true;
@@ -100,12 +117,13 @@ class DetectorService {
       return DetectionResult(
         detections: detections,
         originalSize: originalSize,
-        isMocked: false,
+        isMocked: true,
         inferenceTime: stopwatch.elapsed,
       );
     } catch (error) {
       debugPrint('DetectorService: inference failure ($error); using mock data.');
       final detections = await _loadMockDetections();
+      stopwatch.stop();
       return DetectionResult(
         detections: detections,
         originalSize: originalSize,
