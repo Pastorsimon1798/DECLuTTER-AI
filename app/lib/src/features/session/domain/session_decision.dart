@@ -72,11 +72,17 @@ extension DecisionCategoryX on DecisionCategory {
 
 class SessionDecision {
   const SessionDecision({
+    required this.groupId,
+    required this.groupLabel,
+    required this.groupTotal,
     required this.category,
     required this.createdAt,
     this.note,
   });
 
+  final String groupId;
+  final String groupLabel;
+  final int groupTotal;
   final DecisionCategory category;
   final DateTime createdAt;
   final String? note;

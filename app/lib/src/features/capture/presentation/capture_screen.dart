@@ -10,6 +10,8 @@ import 'package:permission_handler/permission_handler.dart';
 import '../../detect/domain/detection.dart';
 import '../../detect/presentation/widgets/detection_debug_painter.dart';
 import '../../detect/services/detector_service.dart';
+import '../../grouping/domain/detection_group.dart';
+import '../../grouping/services/detection_grouper.dart';
 import '../../session/presentation/session_timer_screen.dart';
 
 class CaptureScreen extends StatefulWidget {
@@ -28,8 +30,10 @@ class _CaptureScreenState extends State<CaptureScreen> with WidgetsBindingObserv
   String? _errorMessage;
   final DetectorService _detectorService = DetectorService();
   DetectionResult? _detectionResult;
+  List<DetectionGroup> _detectionGroups = const [];
   bool _isAnalyzingCapture = false;
   String? _analysisError;
+  final DetectionGrouper _detectionGrouper = const DetectionGrouper();
 
   @override
   void initState() {
@@ -70,6 +74,7 @@ class _CaptureScreenState extends State<CaptureScreen> with WidgetsBindingObserv
         _errorMessage = null;
         _lastCapture = null;
         _detectionResult = null;
+        _detectionGroups = const [];
         _analysisError = null;
         _isAnalyzingCapture = false;
       }
@@ -182,6 +187,7 @@ class _CaptureScreenState extends State<CaptureScreen> with WidgetsBindingObserv
         builder: (_) => SessionTimerScreen(
           capturedImagePath: capture.path,
           capturedAt: DateTime.now(),
+          detectionGroups: _detectionGroups,
         ),
       ),
     );
@@ -192,6 +198,7 @@ class _CaptureScreenState extends State<CaptureScreen> with WidgetsBindingObserv
       _isAnalyzingCapture = true;
       _analysisError = null;
       _detectionResult = null;
+      _detectionGroups = const [];
     });
 
     try {
@@ -199,6 +206,7 @@ class _CaptureScreenState extends State<CaptureScreen> with WidgetsBindingObserv
       if (!mounted) return;
       setState(() {
         _detectionResult = result;
+        _detectionGroups = _detectionGrouper.groupDetections(result.detections);
         _isAnalyzingCapture = false;
       });
     } catch (error) {
@@ -405,9 +413,10 @@ class _CaptureScreenState extends State<CaptureScreen> with WidgetsBindingObserv
     }
 
     final detectionCount = result.detections.length;
+    final groupCount = _detectionGroups.length;
     final statusText = result.isMocked
         ? 'Showing sample detections (add assets/model/detector.tflite to use the real model).'
-        : 'Detected $detectionCount item groups in your zone.';
+        : 'Detected $detectionCount items across $groupCount groups in your zone.';
     final inferenceText = result.inferenceTime != null
         ? 'Inference: ${result.inferenceTime!.inMilliseconds} ms'
         : 'Inference running locally.';
@@ -433,18 +442,25 @@ class _CaptureScreenState extends State<CaptureScreen> with WidgetsBindingObserv
           style: Theme.of(context).textTheme.bodySmall,
         ),
         const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: result.detections
-              .take(6)
-              .map(
-                (detection) => Chip(
-                  label: Text('${detection.displayLabel} ${(detection.confidence * 100).toStringAsFixed(0)}%'),
-                ),
-              )
-              .toList(),
-        ),
+        if (_detectionGroups.isNotEmpty)
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _detectionGroups
+                .map(
+                  (group) => Chip(
+                    avatar: const Icon(Icons.group_work_outlined),
+                    label: Text(
+                      '${group.friendlyLabel} · ${(group.averageConfidence * 100).toStringAsFixed(0)}%',
+                    ),
+                  ),
+                )
+                .toList(),
+          )
+        else
+          const Text(
+            'No clear group clusters yet. Snap another angle or get a bit closer for better grouping.',
+          ),
       ],
     );
   }
