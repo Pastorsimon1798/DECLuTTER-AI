@@ -11,6 +11,7 @@ import '../../detect/domain/detection.dart';
 import '../../detect/presentation/widgets/detection_debug_painter.dart';
 import '../../detect/services/detector_service.dart';
 import '../../grouping/domain/detection_group.dart';
+import '../../grouping/domain/grouped_detection_result.dart';
 import '../../grouping/services/detection_grouper.dart';
 import '../../session/presentation/session_timer_screen.dart';
 
@@ -30,7 +31,7 @@ class _CaptureScreenState extends State<CaptureScreen> with WidgetsBindingObserv
   String? _errorMessage;
   final DetectorService _detectorService = DetectorService();
   DetectionResult? _detectionResult;
-  List<DetectionGroup> _detectionGroups = const [];
+  GroupedDetectionResult _groupedResult = const GroupedDetectionResult.empty();
   bool _isAnalyzingCapture = false;
   String? _analysisError;
   final DetectionGrouper _detectionGrouper = const DetectionGrouper();
@@ -74,7 +75,7 @@ class _CaptureScreenState extends State<CaptureScreen> with WidgetsBindingObserv
         _errorMessage = null;
         _lastCapture = null;
         _detectionResult = null;
-        _detectionGroups = const [];
+        _groupedResult = const GroupedDetectionResult.empty();
         _analysisError = null;
         _isAnalyzingCapture = false;
       }
@@ -187,7 +188,7 @@ class _CaptureScreenState extends State<CaptureScreen> with WidgetsBindingObserv
         builder: (_) => SessionTimerScreen(
           capturedImagePath: capture.path,
           capturedAt: DateTime.now(),
-          detectionGroups: _detectionGroups,
+          groupedResult: _groupedResult,
         ),
       ),
     );
@@ -198,7 +199,7 @@ class _CaptureScreenState extends State<CaptureScreen> with WidgetsBindingObserv
       _isAnalyzingCapture = true;
       _analysisError = null;
       _detectionResult = null;
-      _detectionGroups = const [];
+      _groupedResult = const GroupedDetectionResult.empty();
     });
 
     try {
@@ -206,7 +207,10 @@ class _CaptureScreenState extends State<CaptureScreen> with WidgetsBindingObserv
       if (!mounted) return;
       setState(() {
         _detectionResult = result;
-        _detectionGroups = _detectionGrouper.groupDetections(result.detections);
+        _groupedResult = GroupedDetectionResult.fromDetectionResult(
+          result,
+          grouper: _detectionGrouper,
+        );
         _isAnalyzingCapture = false;
       });
     } catch (error) {
@@ -413,7 +417,7 @@ class _CaptureScreenState extends State<CaptureScreen> with WidgetsBindingObserv
     }
 
     final detectionCount = result.detections.length;
-    final groupCount = _detectionGroups.length;
+    final groupCount = _groupedResult.groupCount;
     final statusText = result.isMocked
         ? 'Showing sample detections (add assets/model/detector.tflite to use the real model).'
         : 'Detected $detectionCount items across $groupCount groups in your zone.';
@@ -442,11 +446,11 @@ class _CaptureScreenState extends State<CaptureScreen> with WidgetsBindingObserv
           style: Theme.of(context).textTheme.bodySmall,
         ),
         const SizedBox(height: 8),
-        if (_detectionGroups.isNotEmpty)
+        if (_groupedResult.hasGroups)
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: _detectionGroups
+            children: _groupedResult.groups
                 .map(
                   (group) => Chip(
                     avatar: const Icon(Icons.group_work_outlined),

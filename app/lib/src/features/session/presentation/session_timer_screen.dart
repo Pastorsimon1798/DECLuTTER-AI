@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../grouping/domain/detection_group.dart';
+import '../../grouping/domain/grouped_detection_result.dart';
 import '../domain/session_decision.dart';
 import 'widgets/focus_timer.dart';
 import 'widgets/quick_start_card.dart';
@@ -13,12 +14,12 @@ class SessionTimerScreen extends StatefulWidget {
     super.key,
     this.capturedImagePath,
     this.capturedAt,
-    this.detectionGroups = const [],
+    this.groupedResult = const GroupedDetectionResult.empty(),
   });
 
   final String? capturedImagePath;
   final DateTime? capturedAt;
-  final List<DetectionGroup> detectionGroups;
+  final GroupedDetectionResult groupedResult;
 
   @override
   State<SessionTimerScreen> createState() => _SessionTimerScreenState();
@@ -31,13 +32,13 @@ class _SessionTimerScreenState extends State<SessionTimerScreen> {
   @override
   void initState() {
     super.initState();
-    if (widget.detectionGroups.isNotEmpty) {
-      _selectedGroupId = widget.detectionGroups.first.id;
+    if (widget.groupedResult.hasGroups) {
+      _selectedGroupId = widget.groupedResult.primaryGroup?.id;
     }
   }
 
   Future<void> _handleDecision(DecisionCategory category) async {
-    final selectedGroup = _groupForId(_selectedGroupId);
+    final selectedGroup = widget.groupedResult.groupForId(_selectedGroupId);
     if (selectedGroup == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Select a highlighted group before logging a decision.')),
@@ -74,18 +75,6 @@ class _SessionTimerScreenState extends State<SessionTimerScreen> {
     });
   }
 
-  DetectionGroup? _groupForId(String? id) {
-    if (id == null) {
-      return null;
-    }
-    for (final group in widget.detectionGroups) {
-      if (group.id == id) {
-        return group;
-      }
-    }
-    return null;
-  }
-
   void _handleTimerCompleted() {
     if (!mounted) return;
     showModalBottomSheet(
@@ -116,7 +105,7 @@ class _SessionTimerScreenState extends State<SessionTimerScreen> {
             FocusTimer(onCompleted: _handleTimerCompleted),
             const SizedBox(height: 24),
             SessionDecisionComposer(
-              groups: widget.detectionGroups,
+              groupedResult: widget.groupedResult,
               selectedGroupId: _selectedGroupId,
               onGroupSelected: (groupId) {
                 setState(() => _selectedGroupId = groupId);
@@ -127,7 +116,7 @@ class _SessionTimerScreenState extends State<SessionTimerScreen> {
             const SizedBox(height: 16),
             SessionDecisionHistory(
               decisions: _decisions,
-              groups: widget.detectionGroups,
+              groupedResult: widget.groupedResult,
             ),
           ],
         ),
@@ -197,14 +186,14 @@ class _CapturedPhotoPreview extends StatelessWidget {
 class SessionDecisionComposer extends StatelessWidget {
   const SessionDecisionComposer({
     super.key,
-    required this.groups,
+    required this.groupedResult,
     required this.selectedGroupId,
     required this.onGroupSelected,
     required this.decisions,
     required this.onCategorySelected,
   });
 
-  final List<DetectionGroup> groups;
+  final GroupedDetectionResult groupedResult;
   final String? selectedGroupId;
   final ValueChanged<String> onGroupSelected;
   final List<SessionDecision> decisions;
@@ -217,6 +206,8 @@ class SessionDecisionComposer extends StatelessWidget {
     for (final decision in decisions) {
       decisionCounts.update(decision.groupId, (value) => value + 1, ifAbsent: () => 1);
     }
+
+    final groups = groupedResult.groups;
 
     return Card(
       elevation: 0,
@@ -232,7 +223,7 @@ class SessionDecisionComposer extends StatelessWidget {
             const SizedBox(height: 8),
             const Text('Choose a highlighted group, then tap the bucket that matches your action. Add a quick note to lock it in.'),
             const SizedBox(height: 16),
-            if (groups.isEmpty)
+            if (!groupedResult.hasGroups)
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
@@ -278,7 +269,7 @@ class SessionDecisionComposer extends StatelessWidget {
               children: DecisionCategory.values
                   .map(
                     (category) => FilledButton.tonalIcon(
-                      onPressed: groups.isEmpty || selectedGroupId == null
+                      onPressed: !groupedResult.hasGroups || selectedGroupId == null
                           ? null
                           : () => onCategorySelected(category),
                       icon: Icon(category.icon),
@@ -298,14 +289,15 @@ class SessionDecisionHistory extends StatelessWidget {
   const SessionDecisionHistory({
     super.key,
     required this.decisions,
-    required this.groups,
+    required this.groupedResult,
   });
 
   final List<SessionDecision> decisions;
-  final List<DetectionGroup> groups;
+  final GroupedDetectionResult groupedResult;
 
   @override
   Widget build(BuildContext context) {
+    final groups = groupedResult.groups;
     if (decisions.isEmpty) {
       return Card(
         elevation: 0,
@@ -320,7 +312,7 @@ class SessionDecisionHistory extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               const Text('Each logged action drops into this running list so your summary writes itself.'),
-              if (groups.isNotEmpty) ...[
+              if (groupedResult.hasGroups) ...[
                 const SizedBox(height: 12),
                 Wrap(
                   spacing: 8,
@@ -355,7 +347,7 @@ class SessionDecisionHistory extends StatelessWidget {
           style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
-        if (groups.isNotEmpty)
+        if (groupedResult.hasGroups)
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -371,7 +363,7 @@ class SessionDecisionHistory extends StatelessWidget {
                 )
                 .toList(),
           ),
-        if (groups.isNotEmpty) const SizedBox(height: 12),
+        if (groupedResult.hasGroups) const SizedBox(height: 12),
         ...decisions.map(
           (decision) => Card(
             margin: const EdgeInsets.only(bottom: 12),

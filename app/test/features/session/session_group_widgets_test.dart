@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:declutter_ai/src/features/detect/domain/detection.dart';
 import 'package:declutter_ai/src/features/grouping/domain/detection_group.dart';
+import 'package:declutter_ai/src/features/grouping/domain/grouped_detection_result.dart';
 import 'package:declutter_ai/src/features/session/domain/session_decision.dart';
 import 'package:declutter_ai/src/features/session/presentation/session_timer_screen.dart';
 import 'package:flutter/material.dart';
@@ -24,6 +25,16 @@ DetectionGroup buildGroup({
         boundingBox: Rect.fromLTWH(0.1 * index, 0, 0.2, 0.2),
       ),
     ),
+  );
+}
+
+GroupedDetectionResult buildGroupedResult(List<DetectionGroup> groups) {
+  final totalDetections = groups.fold<int>(0, (sum, group) => sum + group.count);
+  return GroupedDetectionResult(
+    groups: groups,
+    totalDetections: totalDetections,
+    originalSize: const Size(400, 300),
+    isMocked: false,
   );
 }
 
@@ -52,7 +63,7 @@ void main() {
         MaterialApp(
           home: Material(
             child: SessionDecisionComposer(
-              groups: groups,
+              groupedResult: buildGroupedResult(groups),
               selectedGroupId: groups.first.id,
               onGroupSelected: (groupId) => selectedGroup = groupId,
               decisions: decisions,
@@ -79,7 +90,7 @@ void main() {
         MaterialApp(
           home: Material(
             child: SessionDecisionComposer(
-              groups: const [],
+              groupedResult: const GroupedDetectionResult.empty(),
               selectedGroupId: null,
               onGroupSelected: _noop,
               decisions: const [],
@@ -117,7 +128,7 @@ void main() {
           home: Material(
             child: SessionDecisionHistory(
               decisions: decisions,
-              groups: groups,
+              groupedResult: buildGroupedResult(groups),
             ),
           ),
         ),
@@ -128,6 +139,52 @@ void main() {
       expect(find.text('Group group_1 • Books (2 items)'), findsOneWidget);
       expect(find.text('Progress: 1/2 items sorted'), findsOneWidget);
       expect(find.text('Shelved the novels'), findsOneWidget);
+    });
+  });
+
+  group('SessionTimerScreen', () {
+    testWidgets('surfaces grouped detections in the sprint UI', (tester) async {
+      final groups = [
+        buildGroup(id: 'group_1', label: 'books', count: 2),
+        buildGroup(id: 'group_2', label: 'mug', count: 1),
+      ];
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SessionTimerScreen(
+            groupedResult: buildGroupedResult(groups),
+          ),
+        ),
+      );
+
+      expect(find.text('Books · 0/2 sorted'), findsOneWidget);
+      expect(find.text('Mug · 0/1 sorted'), findsOneWidget);
+      expect(find.text('Books: 0/2 sorted'), findsOneWidget);
+      expect(find.text('Mug: 0/1 sorted'), findsOneWidget);
+    });
+
+    testWidgets('logs decisions against the correct group metadata', (tester) async {
+      final books = buildGroup(id: 'group_1', label: 'books', count: 2);
+      final mug = buildGroup(id: 'group_2', label: 'mug', count: 1);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SessionTimerScreen(
+            groupedResult: buildGroupedResult([books, mug]),
+          ),
+        ),
+      );
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Keep'));
+      await tester.pumpAndSettle();
+
+      // Save the decision without adding an optional note.
+      await tester.tap(find.widgetWithText(FilledButton, 'Save decision'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Books · 1/2 sorted'), findsOneWidget);
+      expect(find.text('Books: 1/2 sorted'), findsOneWidget);
+      expect(find.textContaining('Progress: 1/2 items sorted'), findsOneWidget);
     });
   });
 }
