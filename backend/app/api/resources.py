@@ -174,7 +174,7 @@ async def search_resources(
         # Add bookmark info to response
         response_resources = []
         for resource in resources:
-            resource_dict = ResourceListingResponse.from_orm(resource).dict()
+            resource_dict = ResourceListingResponse.model_validate(resource).model_dump()
             resource_dict['is_bookmarked'] = resource.id in bookmark_map
             resource_dict['bookmark_id'] = bookmark_map.get(resource.id)
             response_resources.append(ResourceListingResponse(**resource_dict))
@@ -203,7 +203,7 @@ async def get_resource(
         )
 
     # Check if user has bookmarked this resource
-    resource_dict = ResourceListingResponse.from_orm(resource).dict()
+    resource_dict = ResourceListingResponse.model_validate(resource).model_dump()
     if current_user:
         bookmark_result = await db.execute(
             select(ResourceBookmark).where(

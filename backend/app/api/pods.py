@@ -86,7 +86,7 @@ async def create_pod(
     await db.refresh(pod)
 
     # Return with member count and role
-    response = PodResponse.from_orm(pod)
+    response = PodResponse.model_validate(pod)
     response.member_count = 1
     response.my_role = 'admin'
 
@@ -131,7 +131,7 @@ async def list_my_pods(
             )
             member_count = member_count_result.scalar()
 
-            response = PodResponse.from_orm(pod)
+            response = PodResponse.model_validate(pod)
             response.member_count = member_count or 0
             response.my_role = membership.role
             responses.append(response)
@@ -171,7 +171,7 @@ async def get_pod(
     )
     member_count = member_count_result.scalar()
 
-    response = PodResponse.from_orm(pod)
+    response = PodResponse.model_validate(pod)
     response.member_count = member_count or 0
     response.my_role = membership.role
 
@@ -342,7 +342,7 @@ async def list_pod_members(
     # Add user info
     responses = []
     for member in members:
-        response = PodMemberResponse.from_orm(member)
+        response = PodMemberResponse.model_validate(member)
         if member.user:
             response.user_name = member.user.pseudonym
             response.user_email = member.user.email
@@ -481,7 +481,7 @@ async def list_check_ins(
     # Add user names
     responses = []
     for check_in in check_ins:
-        response = CheckInResponse.from_orm(check_in)
+        response = CheckInResponse.model_validate(check_in)
         if check_in.user:
             response.user_name = check_in.user.pseudonym
         responses.append(response)
@@ -616,7 +616,7 @@ async def list_sos_broadcasts(
     # Add user names
     responses = []
     for broadcast in broadcasts:
-        response = SOSBroadcastResponse.from_orm(broadcast)
+        response = SOSBroadcastResponse.model_validate(broadcast)
         if broadcast.user:
             response.user_name = broadcast.user.pseudonym
         responses.append(response)
@@ -708,7 +708,7 @@ async def list_pod_posts(
     # Add user names
     responses = []
     for post in posts:
-        response = PodPostResponse.from_orm(post)
+        response = PodPostResponse.model_validate(post)
         if post.user:
             response.user_name = post.user.pseudonym
         responses.append(response)

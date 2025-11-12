@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
 from typing import Optional
 from datetime import timedelta
+from uuid import UUID
 
 from app.database import get_db
 from app.models.user import User, UserProfile
@@ -56,8 +57,14 @@ async def get_current_user(
     if user_id is None:
         raise credentials_exception
 
+    # Convert string UUID to UUID object
+    try:
+        user_uuid = UUID(user_id)
+    except ValueError:
+        raise credentials_exception
+
     # Get user from database
-    result = await db.execute(select(User).where(User.id == user_id))
+    result = await db.execute(select(User).where(User.id == user_uuid))
     user = result.scalar_one_or_none()
 
     if user is None:
@@ -158,7 +165,7 @@ async def register(
     return Token(
         access_token=access_token,
         token_type="bearer",
-        user=UserResponse.from_orm(new_user)
+        user=UserResponse.model_validate(new_user)
     )
 
 
@@ -176,13 +183,15 @@ async def login(
     username = form_data.username
     phone_hash = hash_phone_number(username) if username.startswith('+') else None
 
-    query = select(User).where(
-        or_(
-            User.email == username,
-            User.pseudonym == username,
-            User.phone_hash == phone_hash if phone_hash else False
-        )
-    )
+    # Build query conditions
+    conditions = [
+        User.email == username,
+        User.pseudonym == username,
+    ]
+    if phone_hash:
+        conditions.append(User.phone_hash == phone_hash)
+
+    query = select(User).where(or_(*conditions))
 
     result = await db.execute(query)
     user = result.scalar_one_or_none()
@@ -217,7 +226,7 @@ async def login(
     return Token(
         access_token=access_token,
         token_type="bearer",
-        user=UserResponse.from_orm(user)
+        user=UserResponse.model_validate(user)
     )
 
 
@@ -228,7 +237,7 @@ async def get_current_user_info(
     """
     Get current authenticated user's information
     """
-    return UserResponse.from_orm(current_user)
+    return UserResponse.model_validate(current_user)
 
 
 @router.post("/verify-phone/request")
