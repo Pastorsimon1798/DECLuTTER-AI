@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useResourcesStore } from '../../store/resourcesStore';
+import { getOpenStatus, formatHours } from '../../utils/hoursParser';
 import {
   ArrowLeft,
   MapPin,
@@ -11,6 +12,8 @@ import {
   Mail,
   FileText,
   Users,
+  Navigation,
+  CheckCircle,
 } from 'lucide-react';
 
 export default function ResourceDetailPage() {
@@ -101,9 +104,34 @@ export default function ResourceDetailPage() {
           <div className="flex justify-between items-start">
             <div className="flex-1">
               <h1 className="text-3xl font-bold mb-2">{currentResource.name}</h1>
-              <span className="inline-block px-3 py-1 bg-white bg-opacity-20 rounded-full text-sm">
-                {currentResource.category.replace('_', ' ')}
-              </span>
+              <div className="flex flex-wrap gap-2 items-center">
+                <span className="inline-block px-3 py-1 bg-white bg-opacity-20 rounded-full text-sm">
+                  {currentResource.category.replace('_', ' ')}
+                </span>
+                {/* Phase 3.5: Community-Contributed Badge */}
+                {currentResource.is_community_contributed && (
+                  <span className="inline-block px-3 py-1 bg-purple-500 bg-opacity-90 rounded-full text-sm flex items-center gap-1">
+                    <span>👥</span> Community-Contributed
+                  </span>
+                )}
+                {/* Phase 3.5: Verification Badge */}
+                {currentResource.verification_count > 0 && (
+                  <span className="inline-block px-3 py-1 bg-green-500 bg-opacity-90 rounded-full text-sm flex items-center gap-1">
+                    <CheckCircle size={16} /> Verified by {currentResource.verification_count} users
+                  </span>
+                )}
+                {/* Phase 3.5: Open Now Indicator */}
+                {currentResource.hours && (() => {
+                  const status = getOpenStatus(currentResource.hours);
+                  return (
+                    <span className={`inline-block px-3 py-1 ${
+                      status.isOpen ? 'bg-green-500' : 'bg-red-500'
+                    } bg-opacity-90 rounded-full text-sm flex items-center gap-1`}>
+                      <Clock size={16} /> {status.status}
+                    </span>
+                  );
+                })()}
+              </div>
             </div>
             <button
               onClick={handleToggleBookmark}
@@ -135,7 +163,7 @@ export default function ResourceDetailPage() {
               {currentResource.location_address && (
                 <div className="flex items-start gap-3">
                   <MapPin className="text-green-600 mt-1" size={20} />
-                  <div>
+                  <div className="flex-1">
                     <div className="font-medium text-gray-900">Address</div>
                     <div className="text-gray-600">{currentResource.location_address}</div>
                   </div>
@@ -145,7 +173,7 @@ export default function ResourceDetailPage() {
               {currentResource.phone && (
                 <div className="flex items-start gap-3">
                   <Phone className="text-green-600 mt-1" size={20} />
-                  <div>
+                  <div className="flex-1">
                     <div className="font-medium text-gray-900">Phone</div>
                     <a href={`tel:${currentResource.phone}`} className="text-blue-600 hover:underline">
                       {currentResource.phone}
@@ -157,7 +185,7 @@ export default function ResourceDetailPage() {
               {currentResource.email && (
                 <div className="flex items-start gap-3">
                   <Mail className="text-green-600 mt-1" size={20} />
-                  <div>
+                  <div className="flex-1">
                     <div className="font-medium text-gray-900">Email</div>
                     <a href={`mailto:${currentResource.email}`} className="text-blue-600 hover:underline">
                       {currentResource.email}
@@ -169,7 +197,7 @@ export default function ResourceDetailPage() {
               {currentResource.website && (
                 <div className="flex items-start gap-3">
                   <Globe className="text-green-600 mt-1" size={20} />
-                  <div>
+                  <div className="flex-1">
                     <div className="font-medium text-gray-900">Website</div>
                     <a
                       href={currentResource.website}
@@ -183,9 +211,44 @@ export default function ResourceDetailPage() {
                 </div>
               )}
             </div>
+
+            {/* Phase 3.5: Quick Action Buttons */}
+            <div className="flex flex-wrap gap-3 mt-4">
+              {currentResource.phone && (
+                <a
+                  href={`tel:${currentResource.phone}`}
+                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                >
+                  <Phone size={18} />
+                  Call Now
+                </a>
+              )}
+              {currentResource.location_address && (
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(currentResource.location_address)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  <Navigation size={18} />
+                  Get Directions
+                </a>
+              )}
+              {currentResource.website && (
+                <a
+                  href={currentResource.website}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+                >
+                  <Globe size={18} />
+                  Visit Website
+                </a>
+              )}
+            </div>
           </div>
 
-          {/* Hours */}
+          {/* Hours - Phase 3.5: Formatted Display */}
           {currentResource.hours && (
             <div className="mb-6">
               <h2 className="text-xl font-semibold mb-3 flex items-center gap-2">
@@ -193,7 +256,23 @@ export default function ResourceDetailPage() {
                 Hours
               </h2>
               <div className="bg-gray-50 rounded-lg p-4">
-                <pre className="text-sm text-gray-700">{JSON.stringify(currentResource.hours, null, 2)}</pre>
+                <div className="space-y-2">
+                  {formatHours(currentResource.hours).map((item, idx) => (
+                    <div
+                      key={idx}
+                      className={`flex justify-between py-2 px-3 rounded ${
+                        item.isToday ? 'bg-blue-100 font-semibold' : ''
+                      }`}
+                    >
+                      <span className="text-gray-700">{item.day}</span>
+                      <span className={`${
+                        item.hours.toLowerCase() === 'closed' ? 'text-red-600' : 'text-gray-900'
+                      }`}>
+                        {item.hours}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}

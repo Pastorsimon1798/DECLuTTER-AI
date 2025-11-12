@@ -12,7 +12,7 @@ from app.models.resource import ResourceListing, ResourceBookmark
 from app.schemas.resource import (
     ResourceListingCreate, ResourceListingUpdate, ResourceListingResponse,
     ResourceBookmarkCreate, ResourceBookmarkUpdate, ResourceBookmarkResponse,
-    ResourceBookmarkWithDetails, ResourceSearchParams
+    ResourceBookmarkWithDetails, ResourceSearchParams, ResourceVerificationCreate
 )
 from app.api.auth import get_current_user
 from app.services.geohash_service import GeohashService
@@ -32,8 +32,11 @@ async def search_resources(
     lon: Optional[float] = None,
     radius: int = Query(5000, ge=100, le=50000),  # meters
     category: Optional[str] = None,
+    subcategory: Optional[str] = None,
     query: Optional[str] = None,
     open_now: bool = False,
+    population_tags: Optional[str] = None,  # Comma-separated list
+    is_community_contributed: Optional[bool] = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
@@ -44,6 +47,8 @@ async def search_resources(
 
     This endpoint searches cached resources first, then falls back to 211 API
     if cache is empty or expired.
+
+    Phase 3.5: Supports expanded categories and population-specific filters
     """
 
     filters = []
@@ -52,6 +57,10 @@ async def search_resources(
     if category:
         filters.append(ResourceListing.category == category)
 
+    # Subcategory filter (Phase 3.5)
+    if subcategory:
+        filters.append(ResourceListing.subcategory == subcategory)
+
     # Text search in name and description
     if query:
         search_filter = or_(
@@ -59,6 +68,16 @@ async def search_resources(
             ResourceListing.description.ilike(f"%{query}%")
         )
         filters.append(search_filter)
+
+    # Population tags filter (Phase 3.5)
+    if population_tags:
+        tags_list = [tag.strip() for tag in population_tags.split(',')]
+        # Use overlap operator to check if any tag matches
+        filters.append(ResourceListing.population_tags.overlap(tags_list))
+
+    # Community contributed filter (Phase 3.5)
+    if is_community_contributed is not None:
+        filters.append(ResourceListing.is_community_contributed == is_community_contributed)
 
     # Base query
     query_obj = select(ResourceListing)
@@ -207,13 +226,20 @@ async def create_resource(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Create a new resource (admin/community members can add local resources)"""
+    """
+    Create a new resource (community members can add local resources)
+
+    Phase 3.5: Community-contributed resources are marked with is_community_contributed=True
+    """
 
     # Create resource
     resource_dict = resource_data.model_dump(exclude={'location'})
 
     # Set cache expiry (7 days default)
     resource_dict['cache_expires_at'] = datetime.utcnow() + timedelta(days=7)
+
+    # Mark as community-contributed (Phase 3.5)
+    resource_dict['is_community_contributed'] = True
 
     # Handle location if provided
     if resource_data.location:
@@ -426,3 +452,42 @@ async def delete_bookmark(
     await db.commit()
 
     return None
+
+
+# Phase 3.5: Community Verification Endpoint
+
+@router.post("/{resource_id}/verify", response_model=ResourceListingResponse)
+async def verify_resource(
+    resource_id: UUID,
+    verification_data: ResourceVerificationCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Community verification for resources
+
+    Users can verify that a resource's information is accurate.
+    This helps build trust in community-contributed data.
+    """
+    result = await db.execute(
+        select(ResourceListing).where(ResourceListing.id == resource_id)
+    )
+    resource = result.scalar_one_or_none()
+
+    if not resource:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Resource not found"
+        )
+
+    # Only increment if verification is positive
+    if verification_data.is_accurate:
+        resource.verification_count += 1
+        resource.verified_by = current_user.id
+        resource.verified_at = datetime.utcnow()
+        resource.last_verified_at = datetime.utcnow()
+
+    await db.commit()
+    await db.refresh(resource)
+
+    return resource

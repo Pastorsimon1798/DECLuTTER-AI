@@ -19,8 +19,11 @@ export const useResourcesStore = create((set, get) => ({
     lon: null,
     radius: 5000,  // 5km default
     category: null,
+    subcategory: null,
     query: '',
     open_now: false,
+    population_tags: null,  // Phase 3.5
+    is_community_contributed: null,  // Phase 3.5
   },
 
   // Set filters
@@ -35,8 +38,11 @@ export const useResourcesStore = create((set, get) => ({
         lon: null,
         radius: 5000,
         category: null,
+        subcategory: null,
         query: '',
         open_now: false,
+        population_tags: null,
+        is_community_contributed: null,
       },
     });
   },
@@ -210,6 +216,33 @@ export const useResourcesStore = create((set, get) => ({
     } catch (error) {
       set({
         error: error.response?.data?.detail || 'Failed to delete bookmark',
+        loading: false,
+      });
+      throw error;
+    }
+  },
+
+  // Phase 3.5: Verify resource
+  verifyResource: async (resourceId, isAccurate, notes = '') => {
+    set({ loading: true, error: null });
+    try {
+      const response = await resourcesService.verifyResource(resourceId, isAccurate, notes);
+
+      // Update resource in lists and current resource
+      set((state) => ({
+        resources: state.resources.map((r) =>
+          r.id === resourceId ? { ...r, verification_count: response.verification_count } : r
+        ),
+        currentResource: state.currentResource?.id === resourceId
+          ? { ...state.currentResource, verification_count: response.verification_count }
+          : state.currentResource,
+        loading: false,
+      }));
+
+      return response;
+    } catch (error) {
+      set({
+        error: error.response?.data?.detail || 'Failed to verify resource',
         loading: false,
       });
       throw error;

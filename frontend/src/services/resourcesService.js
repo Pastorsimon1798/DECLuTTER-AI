@@ -13,8 +13,15 @@ export const resourcesService = {
     if (filters.lon) params.append('lon', filters.lon);
     if (filters.radius) params.append('radius', filters.radius);
     if (filters.category) params.append('category', filters.category);
+    if (filters.subcategory) params.append('subcategory', filters.subcategory);
     if (filters.query) params.append('query', filters.query);
     if (filters.open_now) params.append('open_now', filters.open_now);
+    if (filters.population_tags && filters.population_tags.length > 0) {
+      params.append('population_tags', filters.population_tags.join(','));
+    }
+    if (filters.is_community_contributed !== null) {
+      params.append('is_community_contributed', filters.is_community_contributed);
+    }
 
     const response = await api.get(`/resources/search?${params.toString()}`);
     return response.data;
@@ -60,6 +67,15 @@ export const resourcesService = {
 
   async deleteBookmark(bookmarkId) {
     await api.delete(`/resources/bookmarks/${bookmarkId}`);
+  },
+
+  // Phase 3.5: Verification
+  async verifyResource(resourceId, isAccurate, notes = '') {
+    const response = await api.post(`/resources/${resourceId}/verify`, {
+      is_accurate: isAccurate,
+      notes,
+    });
+    return response.data;
   },
 };
 

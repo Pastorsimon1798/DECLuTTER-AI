@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Text, ForeignKey, CheckConstraint, ARRAY
+from sqlalchemy import Column, String, Text, ForeignKey, CheckConstraint, ARRAY, Boolean, Integer
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.types import TIMESTAMP
 from sqlalchemy.orm import relationship
@@ -16,7 +16,8 @@ class ResourceListing(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     external_id = Column(String(200), unique=True)  # ID from 211 API
     name = Column(String(300), nullable=False)
-    category = Column(String(50), nullable=False)  # 'food_pantry', 'shelter', 'medical', etc.
+    category = Column(String(50), nullable=False)  # Main category: 'food', 'shelter', 'healthcare', etc.
+    subcategory = Column(String(100))  # Detailed subcategory
     description = Column(Text)
     location_address = Column(Text)
     location_point = Column(Geography("POINT", srid=4326))
@@ -30,6 +31,14 @@ class ResourceListing(Base):
     accessibility_features = Column(ARRAY(Text))
     eligibility_requirements = Column(Text)
     documents_required = Column(ARRAY(Text))
+
+    # Phase 3.5: Community contributions and verification
+    is_community_contributed = Column(Boolean, default=False, nullable=False)
+    population_tags = Column(ARRAY(String(50)))  # 'veterans', 'lgbtq', 'families', 'immigrants', etc.
+    verified_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"))
+    verified_at = Column(TIMESTAMP(timezone=True))
+    verification_count = Column(Integer, default=0)  # Community verification count
+
     last_verified_at = Column(TIMESTAMP(timezone=True))
     cached_at = Column(TIMESTAMP(timezone=True), default=datetime.utcnow, nullable=False)
     cache_expires_at = Column(TIMESTAMP(timezone=True), nullable=False)
@@ -37,6 +46,7 @@ class ResourceListing(Base):
 
     # Relationships
     bookmarks = relationship("ResourceBookmark", back_populates="resource", cascade="all, delete-orphan")
+    verifier = relationship("User", foreign_keys=[verified_by])
 
     def __repr__(self):
         return f"<ResourceListing {self.name}>"

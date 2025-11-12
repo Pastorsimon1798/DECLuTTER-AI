@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useResourcesStore } from '../../store/resourcesStore';
+import ResourceMapView from './ResourceMapView';
 import { MapPin, Search, Filter, List, Map, Bookmark, Phone, Globe, Clock } from 'lucide-react';
 
 export default function ResourceSearchPage() {
@@ -66,11 +67,27 @@ export default function ResourceSearchPage() {
     }
   };
 
+  // Phase 3.5: Expanded categories (Option A: 8 main categories)
   const categories = [
-    { value: 'food_pantry', label: 'Food Pantries', icon: '🍎' },
-    { value: 'shelter', label: 'Shelters', icon: '🏠' },
-    { value: 'medical', label: 'Medical', icon: '⚕️' },
-    { value: 'general', label: 'General', icon: '📍' },
+    { value: 'food', label: 'Food', icon: '🍎' },
+    { value: 'shelter', label: 'Shelter', icon: '🏠' },
+    { value: 'healthcare', label: 'Healthcare', icon: '⚕️' },
+    { value: 'clothing_household', label: 'Clothing & Household', icon: '👕' },
+    { value: 'legal', label: 'Legal Services', icon: '⚖️' },
+    { value: 'financial', label: 'Financial Assistance', icon: '💰' },
+    { value: 'employment_education', label: 'Employment & Education', icon: '💼' },
+    { value: 'transportation', label: 'Transportation', icon: '🚌' },
+  ];
+
+  // Phase 3.5: Population-specific filters
+  const populationFilters = [
+    { value: 'veterans', label: 'Veterans', icon: '🎖️' },
+    { value: 'lgbtq', label: 'LGBTQ+ Friendly', icon: '🏳️‍🌈' },
+    { value: 'families', label: 'Family-Friendly', icon: '👨‍👩‍👧' },
+    { value: 'immigrants', label: 'Immigrant Services', icon: '🌍' },
+    { value: 'disability_accessible', label: 'Disability Accessible', icon: '♿' },
+    { value: 'youth', label: 'Youth Programs', icon: '👶' },
+    { value: 'seniors', label: 'Senior Services', icon: '👴' },
   ];
 
   if (loading && resources.length === 0) {
@@ -152,52 +169,89 @@ export default function ResourceSearchPage() {
       {/* Filters Panel */}
       {showFilters && (
         <div className="mb-6 bg-white border border-gray-200 rounded-lg p-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Search Radius
-              </label>
-              <select
-                value={filters.radius}
-                onChange={(e) => {
-                  setFilters({ radius: parseInt(e.target.value) });
-                  searchResources();
-                }}
-                className="w-full border-gray-300 rounded-lg"
-              >
-                <option value="1000">1 km</option>
-                <option value="5000">5 km</option>
-                <option value="10000">10 km</option>
-                <option value="25000">25 km</option>
-              </select>
-            </div>
-
-            <div className="flex items-end">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={filters.open_now}
+          <div className="space-y-4">
+            {/* Basic Filters */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Search Radius
+                </label>
+                <select
+                  value={filters.radius}
                   onChange={(e) => {
-                    setFilters({ open_now: e.target.checked });
+                    setFilters({ radius: parseInt(e.target.value) });
                     searchResources();
                   }}
-                  className="rounded border-gray-300"
-                />
-                <span className="text-sm font-medium text-gray-700">Open now</span>
-              </label>
+                  className="w-full border-gray-300 rounded-lg"
+                >
+                  <option value="1000">1 km</option>
+                  <option value="5000">5 km</option>
+                  <option value="10000">10 km</option>
+                  <option value="25000">25 km</option>
+                </select>
+              </div>
+
+              <div className="flex items-end">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={filters.open_now}
+                    onChange={(e) => {
+                      setFilters({ open_now: e.target.checked });
+                      searchResources();
+                    }}
+                    className="rounded border-gray-300"
+                  />
+                  <span className="text-sm font-medium text-gray-700">Open now</span>
+                </label>
+              </div>
+
+              <div className="flex items-end gap-2">
+                <button
+                  onClick={() => {
+                    clearFilters();
+                    setSearchQuery('');
+                    searchResources();
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  Clear Filters
+                </button>
+              </div>
             </div>
 
-            <div className="flex items-end gap-2">
-              <button
-                onClick={() => {
-                  clearFilters();
-                  setSearchQuery('');
-                  searchResources();
-                }}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-              >
-                Clear Filters
-              </button>
+            {/* Phase 3.5: Population Filters */}
+            <div className="border-t pt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Population-Specific Resources
+              </label>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {populationFilters.map((filter) => (
+                  <label key={filter.value} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={filters.population_tags?.includes(filter.value) || false}
+                      onChange={(e) => {
+                        const currentTags = filters.population_tags || [];
+                        const newTags = e.target.checked
+                          ? [...currentTags, filter.value]
+                          : currentTags.filter(t => t !== filter.value);
+                        setFilters({ population_tags: newTags.length > 0 ? newTags : null });
+                        searchResources();
+                      }}
+                      className="rounded border-gray-300"
+                    />
+                    <span className="text-sm flex items-center gap-1">
+                      <span>{filter.icon}</span>
+                      <span>{filter.label}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                Note: These filters are informational and help you find resources that may serve specific populations.
+                Please verify eligibility requirements with each resource.
+              </p>
             </div>
           </div>
         </div>
@@ -259,7 +313,7 @@ export default function ResourceSearchPage() {
               >
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
-                    <div className="flex items-start gap-3 mb-2">
+                    <div className="flex items-start gap-2 mb-2 flex-wrap">
                       <h3
                         className="text-xl font-semibold text-gray-900 hover:text-blue-600 cursor-pointer"
                         onClick={() => navigate(`/resources/${resource.id}`)}
@@ -269,6 +323,18 @@ export default function ResourceSearchPage() {
                       <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
                         {resource.category.replace('_', ' ')}
                       </span>
+                      {/* Phase 3.5: Community-Contributed Badge */}
+                      {resource.is_community_contributed && (
+                        <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full flex items-center gap-1">
+                          <span>👥</span> Community
+                        </span>
+                      )}
+                      {/* Phase 3.5: Verification Badge */}
+                      {resource.verification_count > 0 && (
+                        <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full flex items-center gap-1">
+                          <span>✓</span> Verified ({resource.verification_count})
+                        </span>
+                      )}
                     </div>
 
                     {resource.description && (
@@ -352,20 +418,23 @@ export default function ResourceSearchPage() {
         </div>
       )}
 
-      {/* Map View */}
+      {/* Map View - Phase 3.5: Interactive Map with Leaflet */}
       {viewMode === 'map' && (
-        <div className="bg-white rounded-lg shadow p-8 text-center">
-          <Map size={48} className="mx-auto text-gray-400 mb-4" />
-          <p className="text-gray-600 mb-2">Map view coming soon!</p>
-          <p className="text-sm text-gray-500">
-            Interactive map with resource locations will be available in the next update.
-          </p>
-          <button
-            onClick={() => setViewMode('list')}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            View List Instead
-          </button>
+        <div>
+          {resources.length === 0 ? (
+            <div className="bg-white rounded-lg shadow p-8 text-center">
+              <Map size={48} className="mx-auto text-gray-400 mb-4" />
+              <p className="text-gray-600 mb-2">No resources to display on map</p>
+              <p className="text-sm text-gray-500">
+                Try adjusting your search filters to find resources.
+              </p>
+            </div>
+          ) : (
+            <ResourceMapView
+              resources={resources}
+              center={filters.lat && filters.lon ? [filters.lat, filters.lon] : null}
+            />
+          )}
         </div>
       )}
     </div>
