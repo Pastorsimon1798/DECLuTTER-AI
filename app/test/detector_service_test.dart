@@ -124,7 +124,7 @@ void main() {
           '{"detections": [{"label": "0", "confidence": 0.5, "box": {"left": 0.1, "top": 0.2, "right": 0.3, "bottom": 0.4}}]}',
     });
 
-    final interpreter = _ThrowingDetectionInterpreter();
+    final interpreter = _TrackingThrowingInterpreter();
     final service = DetectorService(bundle: bundle, interpreter: interpreter);
 
     final tempDir = await Directory.systemTemp.createTemp('detector_test_throwing_interpreter');
@@ -134,6 +134,7 @@ void main() {
 
     final result = await service.detectOnImage(imageFile.path);
 
+    expect(interpreter.runCallCount, greaterThan(0), reason: 'interpreter should have been invoked before falling back');
     expect(result.isMocked, isTrue);
     expect(result.detections, isNotEmpty);
     expect(result.inferenceTime, equals(const Duration(milliseconds: 120)));
@@ -273,6 +274,31 @@ class _ThrowingInterpreter implements DetectionInterpreter {
   @override
   void run(Object input, Map<int, Object> outputs) {
     throw StateError('inference failure');
+  }
+}
+
+class _TrackingThrowingInterpreter implements DetectionInterpreter {
+  int runCallCount = 0;
+
+  @override
+  List<int> get inputShape => const [1, 4, 4, 3];
+
+  @override
+  TfLiteType get inputType => TfLiteType.float32;
+
+  @override
+  int get outputCount => 4;
+
+  @override
+  List<int> outputShape(int index) => const [1, 5];
+
+  @override
+  TfLiteType outputType(int index) => TfLiteType.float32;
+
+  @override
+  void run(Object input, Map<int, Object> outputs) {
+    runCallCount += 1;
+    throw StateError('forced failure');
   }
 }
 

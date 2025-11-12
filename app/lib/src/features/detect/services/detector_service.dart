@@ -20,6 +20,8 @@ import 'image_tensor_builder.dart';
 /// async flow realistic for the MVP.
 class DetectorService {
 
+  static const Duration _mockInferenceDuration = Duration(milliseconds: 120);
+
   DetectorService({
     AssetBundle? bundle,
     DetectionInterpreter? interpreter,
@@ -115,13 +117,7 @@ class DetectorService {
         : Size.zero;
 
     if (_useMockDetections || _interpreter == null) {
-      final detections = await _loadMockDetections();
-      return DetectionResult(
-        detections: detections,
-        originalSize: originalSize,
-        isMocked: true,
-        inferenceTime: const Duration(milliseconds: 120),
-      );
+      return _mockDetectionResult(originalSize);
     }
 
     final stopwatch = Stopwatch()..start();
@@ -140,14 +136,18 @@ class DetectorService {
     } catch (error) {
       debugPrint('DetectorService: inference failure ($error); using mock data.');
       stopwatch.stop();
-      final detections = await _loadMockDetections();
-      return DetectionResult(
-        detections: detections,
-        originalSize: originalSize,
-        isMocked: true,
-        inferenceTime: const Duration(milliseconds: 120),
-      );
+      return _mockDetectionResult(originalSize);
     }
+  }
+
+  Future<DetectionResult> _mockDetectionResult(Size originalSize) async {
+    final detections = await _loadMockDetections();
+    return DetectionResult(
+      detections: detections,
+      originalSize: originalSize,
+      isMocked: true,
+      inferenceTime: _mockInferenceDuration,
+    );
   }
 
   Future<List<String>> _loadLabels() async {
