@@ -46,7 +46,7 @@ async def root():
 
 
 # Import API routers
-from app.api import auth, posts, matches, organizations, shifts
+from app.api import auth, posts, matches, organizations, shifts, resources
 
 # Include routers
 app.include_router(auth.router, prefix=f"{settings.API_V1_PREFIX}/auth", tags=["Authentication"])
@@ -54,6 +54,7 @@ app.include_router(posts.router, prefix=f"{settings.API_V1_PREFIX}/posts", tags=
 app.include_router(matches.router, prefix=f"{settings.API_V1_PREFIX}/matches", tags=["Matches"])
 app.include_router(organizations.router, prefix=f"{settings.API_V1_PREFIX}/organizations", tags=["Organizations"])
 app.include_router(shifts.router, prefix=f"{settings.API_V1_PREFIX}/shifts", tags=["Shifts"])
+app.include_router(resources.router, prefix=f"{settings.API_V1_PREFIX}/resources", tags=["Resources"])
 
 
 # Exception handlers

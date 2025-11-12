@@ -22,9 +22,12 @@ import ShiftDetailPage from './features/shifts/ShiftDetailPage'
 import MyShiftsPage from './features/shifts/MyShiftsPage'
 import CreateShiftPage from './features/shifts/CreateShiftPage'
 
+// Resources pages (Project 10: Pantry Locator - Phase 3)
+import ResourceSearchPage from './features/resources/ResourceSearchPage'
+import ResourceDetailPage from './features/resources/ResourceDetailPage'
+
 // Placeholder pages for future phases
 const PodsPage = () => <div className="p-8"><h1 className="text-3xl font-bold">Pods</h1><p className="mt-4">Coming soon - Phase 4</p></div>
-const ResourcesPage = () => <div className="p-8"><h1 className="text-3xl font-bold">Pantry Locator</h1><p className="mt-4">Coming soon - Phase 3</p></div>
 
 function App() {
   return (
@@ -61,13 +64,13 @@ function App() {
           <Route path="/shifts/my-shifts" element={<MyShiftsPage />} />
           <Route path="/shifts/:id" element={<ShiftDetailPage />} />
 
+          {/* Project 10: Pantry Locator (Phase 3) */}
+          <Route path="/resources" element={<ResourceSearchPage />} />
+          <Route path="/resources/:id" element={<ResourceDetailPage />} />
+
           {/* Project 2: Pods (Phase 4) */}
           <Route path="/pods" element={<PodsPage />} />
           <Route path="/pods/:id" element={<PodsPage />} />
-
-          {/* Project 10: Pantry Locator (Phase 3) */}
-          <Route path="/resources" element={<ResourcesPage />} />
-          <Route path="/resources/:id" element={<ResourcesPage />} />
         </Route>
 
         {/* 404 */}

@@ -12,7 +12,7 @@ export function Layout() {
   const navigation = [
     { name: 'Home', href: '/', icon: Home },
     { name: 'Posts', href: '/posts', icon: Search },
-    { name: 'Matches', href: '/matches', icon: MessageCircle },
+    { name: 'Resources', href: '/resources', icon: MapPin },
     { name: 'Shifts', href: '/shifts', icon: Users },
   ]
 

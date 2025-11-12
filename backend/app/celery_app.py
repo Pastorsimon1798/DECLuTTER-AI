@@ -11,6 +11,7 @@ celery_app = Celery(
     include=[
         "app.tasks.reminders",
         "app.tasks.expiry",
+        "app.tasks.cache",
     ]
 )
 
@@ -44,6 +45,11 @@ celery_app.conf.beat_schedule = {
     "expire-old-posts": {
         "task": "app.tasks.expiry.expire_old_posts",
         "schedule": crontab(hour=2, minute=0),  # Daily at 2 AM
+    },
+    # Refresh expired resource cache weekly on Sundays at 3 AM
+    "refresh-resource-cache": {
+        "task": "app.tasks.cache.refresh_expired_resources",
+        "schedule": crontab(day_of_week=0, hour=3, minute=0),  # Sundays at 3 AM
     },
 }
 

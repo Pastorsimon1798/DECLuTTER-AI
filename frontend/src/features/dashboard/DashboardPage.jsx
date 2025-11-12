@@ -285,17 +285,10 @@ export function DashboardPage() {
       {/* Coming Soon Features */}
       <div className="mt-8 card bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200">
         <h2 className="mb-4 text-lg font-semibold text-purple-900">Coming Soon</h2>
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="text-center">
-            <div className="text-3xl mb-2">📍</div>
-            <h3 className="font-semibold text-purple-900">Pantry Locator</h3>
-            <p className="text-sm text-purple-700">Find food pantries nearby (Phase 3)</p>
-          </div>
-          <div className="text-center">
-            <div className="text-3xl mb-2">👥</div>
-            <h3 className="font-semibold text-purple-900">Pods</h3>
-            <p className="text-sm text-purple-700">Join micro-support circles (Phase 4)</p>
-          </div>
+        <div className="text-center py-4">
+          <div className="text-3xl mb-2">👥</div>
+          <h3 className="font-semibold text-purple-900">Pods - Micro-Support Circles</h3>
+          <p className="text-sm text-purple-700">Join intimate support groups for sustained mutual aid (Phase 4)</p>
         </div>
       </div>
     </div>
