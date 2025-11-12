@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
-import { Home, Search, Users, MessageCircle, LogOut, User as UserIcon, FileText, Calendar } from 'lucide-react'
+import { Home, Search, Users, MessageCircle, LogOut, User as UserIcon, FileText, Calendar, MapPin } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
+import LanguageSelector from '../LanguageSelector'
 
 export function Layout() {
   const location = useLocation()
@@ -59,6 +60,9 @@ export function Layout() {
                 <span className="sr-only">Matches</span>
                 <MessageCircle size={24} />
               </Link>
+
+              {/* Language selector */}
+              <LanguageSelector variant="dropdown" />
 
               {/* User menu */}
               <div className="relative">

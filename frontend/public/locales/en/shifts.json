@@ -1,0 +1,84 @@
+{
+  "calendar": {
+    "title": "Volunteer Shifts",
+    "viewMode": "View",
+    "monthView": "Month",
+    "weekView": "Week",
+    "dayView": "Day",
+    "agendaView": "Agenda",
+    "today": "Today",
+    "filters": "Filters",
+    "filterByOrg": "Filter by Organization",
+    "filterByStatus": "Filter by Status",
+    "allOrganizations": "All Organizations",
+    "statusAll": "All Shifts",
+    "statusOpen": "Open Shifts",
+    "statusFull": "Full Shifts",
+    "mySignups": "My Signups Only",
+    "noShifts": "No shifts available",
+    "noShiftsDescription": "Check back later for new volunteer opportunities."
+  },
+  "myShifts": {
+    "title": "My Volunteer Shifts",
+    "tabs": {
+      "upcoming": "Upcoming",
+      "past": "Past",
+      "all": "All"
+    },
+    "noShifts": "You haven't signed up for any shifts yet",
+    "noShiftsDescription": "Browse the calendar to find volunteer opportunities.",
+    "browseShifts": "Browse Shifts",
+    "cancelSignup": "Cancel Signup",
+    "cancelConfirm": "Are you sure you want to cancel this shift signup?",
+    "cancelSuccess": "Shift signup cancelled",
+    "cancelError": "Failed to cancel signup"
+  },
+  "detail": {
+    "organization": "Organization",
+    "date": "Date",
+    "time": "Time",
+    "duration": "Duration",
+    "location": "Location",
+    "coordinator": "Coordinator",
+    "contact": "Contact",
+    "description": "Description",
+    "requirements": "Requirements",
+    "capacity": "Capacity",
+    "spotsAvailable": "{{count}} spots available",
+    "full": "This shift is full",
+    "signUp": "Sign Up for Shift",
+    "signedUp": "You're signed up!",
+    "signUpSuccess": "Successfully signed up for shift!",
+    "signUpError": "Failed to sign up for shift",
+    "reminder24h": "24-hour reminder",
+    "reminder2h": "2-hour reminder"
+  },
+  "organizations": {
+    "title": "Organizations",
+    "createButton": "Add Organization",
+    "noOrganizations": "No organizations found",
+    "create": {
+      "title": "Add Organization",
+      "nameLabel": "Organization Name",
+      "namePlaceholder": "Enter organization name",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Tell us about this organization...",
+      "websiteLabel": "Website",
+      "websitePlaceholder": "https://example.org",
+      "contactEmailLabel": "Contact Email",
+      "contactEmailPlaceholder": "contact@example.org",
+      "contactPhoneLabel": "Contact Phone",
+      "contactPhonePlaceholder": "(555) 123-4567",
+      "submitButton": "Create Organization",
+      "success": "Organization created successfully!",
+      "error": "Failed to create organization"
+    }
+  },
+  "status": {
+    "open": "Open",
+    "full": "Full",
+    "cancelled": "Cancelled",
+    "completed": "Completed",
+    "confirmed": "Confirmed"
+  }
+}

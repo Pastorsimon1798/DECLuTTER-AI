@@ -1,6 +1,10 @@
+import { Suspense } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { Layout } from './components/layout/Layout'
 import { ProtectedRoute } from './components/ProtectedRoute'
+
+// Initialize i18n
+import './i18n/config'
 
 // Auth pages
 import { LoginPage } from './features/auth/LoginPage'
@@ -29,10 +33,21 @@ import ResourceDetailPage from './features/resources/ResourceDetailPage'
 // Placeholder pages for future phases
 const PodsPage = () => <div className="p-8"><h1 className="text-3xl font-bold">Pods</h1><p className="mt-4">Coming soon - Phase 4</p></div>
 
+// Loading component while translations load
+const LoadingFallback = () => (
+  <div className="flex items-center justify-center min-h-screen">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+      <p className="text-gray-600">Loading...</p>
+    </div>
+  </div>
+);
+
 function App() {
   return (
-    <Router>
-      <Routes>
+    <Suspense fallback={<LoadingFallback />}>
+      <Router>
+        <Routes>
         {/* Public routes */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
@@ -77,6 +92,7 @@ function App() {
         <Route path="*" element={<div className="p-8"><h1 className="text-2xl">404 - Page Not Found</h1></div>} />
       </Routes>
     </Router>
+    </Suspense>
   )
 }
 

@@ -1,0 +1,42 @@
+{
+  "welcome": {
+    "title": "Welcome, {{name}}!",
+    "subtitle": "Here's what's happening in your community"
+  },
+  "stats": {
+    "activePosts": "Active Posts",
+    "upcomingShifts": "Upcoming Shifts",
+    "bookmarkedResources": "Saved Resources",
+    "connections": "Connections"
+  },
+  "quickActions": {
+    "title": "Quick Actions",
+    "createPost": "Create a Post",
+    "findResources": "Find Resources",
+    "browseShifts": "Browse Shifts",
+    "viewProfile": "View Profile"
+  },
+  "recentActivity": {
+    "title": "Recent Activity",
+    "noActivity": "No recent activity",
+    "noActivityDescription": "Start exploring to see your activity here.",
+    "viewAll": "View All"
+  },
+  "upcomingEvents": {
+    "title": "Upcoming Events",
+    "noEvents": "No upcoming events",
+    "viewCalendar": "View Calendar"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "markAllRead": "Mark all as read",
+    "noNotifications": "No new notifications",
+    "viewAll": "View all notifications"
+  },
+  "communityInsights": {
+    "title": "Community Insights",
+    "mostNeeded": "Most Needed",
+    "mostOffered": "Most Offered",
+    "trending": "Trending Topics"
+  }
+}
