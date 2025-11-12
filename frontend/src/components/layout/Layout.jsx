@@ -1,14 +1,19 @@
-import { Outlet, Link, useLocation } from 'react-router-dom'
-import { Home, Search, Users, MessageCircle } from 'lucide-react'
+import { useState } from 'react'
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
+import { Home, Search, Users, MessageCircle, LogOut, User as UserIcon, FileText } from 'lucide-react'
+import { useAuthStore } from '../../store/authStore'
 
 export function Layout() {
   const location = useLocation()
+  const navigate = useNavigate()
+  const { user, logout } = useAuthStore()
+  const [showUserMenu, setShowUserMenu] = useState(false)
 
   const navigation = [
     { name: 'Home', href: '/', icon: Home },
-    { name: 'Find', href: '/posts', icon: Search },
-    { name: 'Pods', href: '/pods', icon: Users },
-    { name: 'Shifts', href: '/shifts', icon: MessageCircle },
+    { name: 'Posts', href: '/posts', icon: Search },
+    { name: 'Matches', href: '/matches', icon: MessageCircle },
+    { name: 'Shifts', href: '/shifts', icon: Users },
   ]
 
   const isActive = (path) => {
@@ -16,6 +21,11 @@ export function Layout() {
       return location.pathname === '/'
     }
     return location.pathname.startsWith(path)
+  }
+
+  const handleLogout = async () => {
+    await logout()
+    navigate('/login')
   }
 
   return (
@@ -45,14 +55,71 @@ export function Layout() {
               ))}
             </nav>
             <div className="flex items-center gap-4">
-              <button className="text-gray-600 hover:text-gray-900">
-                <span className="sr-only">Notifications</span>
-                🔔
-              </button>
-              <button className="text-gray-600 hover:text-gray-900">
-                <span className="sr-only">Profile</span>
-                👤
-              </button>
+              <Link to="/matches" className="text-gray-600 hover:text-gray-900 relative">
+                <span className="sr-only">Matches</span>
+                <MessageCircle size={24} />
+              </Link>
+
+              {/* User menu */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowUserMenu(!showUserMenu)}
+                  className="flex items-center gap-2 rounded-lg p-2 hover:bg-gray-100"
+                >
+                  <UserIcon size={20} className="text-gray-600" />
+                  <span className="hidden md:block text-sm font-medium text-gray-700">
+                    {user?.pseudonym}
+                  </span>
+                </button>
+
+                {/* Dropdown menu */}
+                {showUserMenu && (
+                  <>
+                    {/* Backdrop */}
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => setShowUserMenu(false)}
+                    />
+
+                    {/* Menu */}
+                    <div className="absolute right-0 z-20 mt-2 w-48 rounded-lg border border-gray-200 bg-white shadow-lg">
+                      <div className="p-3 border-b border-gray-200">
+                        <p className="text-sm font-semibold text-gray-900">{user?.pseudonym}</p>
+                        <p className="text-xs text-gray-500">{user?.email || 'No email'}</p>
+                      </div>
+
+                      <div className="py-1">
+                        <Link
+                          to="/posts/my"
+                          className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          onClick={() => setShowUserMenu(false)}
+                        >
+                          <FileText size={16} />
+                          My Posts
+                        </Link>
+                        <Link
+                          to="/matches"
+                          className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          onClick={() => setShowUserMenu(false)}
+                        >
+                          <MessageCircle size={16} />
+                          My Matches
+                        </Link>
+                      </div>
+
+                      <div className="border-t border-gray-200 py-1">
+                        <button
+                          onClick={handleLogout}
+                          className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-700 hover:bg-red-50"
+                        >
+                          <LogOut size={16} />
+                          Logout
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>
