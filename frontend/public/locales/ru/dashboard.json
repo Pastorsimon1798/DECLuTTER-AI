@@ -1,0 +1,62 @@
+{
+  "welcome": {
+    "title": "Добро пожаловать в MutualCircle",
+    "subtitle": "Ваше сообщество взаимопомощи",
+    "greeting": "Здравствуйте, {{name}}!",
+    "newUser": "Добро пожаловать в MutualCircle! Начните с создания публикации или изучите, что предлагает ваше сообщество."
+  },
+  "stats": {
+    "title": "Ваш обзор",
+    "myPosts": "Мои публикации",
+    "myResponses": "Мои ответы",
+    "activeMatches": "Активные связи",
+    "completedHelps": "Завершено",
+    "myShifts": "Мои смены",
+    "upcomingShifts": "Предстоящие смены",
+    "hoursVolunteered": "Волонтёрские часы",
+    "bookmarkedResources": "Сохранённые ресурсы",
+    "myPods": "Мои группы",
+    "podCheckIns": "Отметки",
+    "communityImpact": "Влияние на сообщество",
+    "totalPosts": "Всего публикаций",
+    "totalMembers": "Всего участников",
+    "helpsSinceJoining": "Помощь с момента присоединения"
+  },
+  "quickActions": {
+    "title": "Быстрые действия",
+    "createPost": "Создать публикацию",
+    "browseNeeds": "Просмотреть потребности",
+    "findResources": "Найти ресурсы",
+    "viewShifts": "Посмотреть смены",
+    "myPods": "Мои группы",
+    "checkIn": "Отметиться"
+  },
+  "recentActivity": {
+    "title": "Недавняя активность",
+    "noActivity": "Пока нет активности",
+    "noActivityDescription": "Ваша активность появится здесь.",
+    "viewAll": "Посмотреть всё",
+    "newResponse": "Новый ответ на вашу публикацию",
+    "matchCreated": "Новая связь",
+    "postCompleted": "Публикация завершена",
+    "upcomingShift": "Предстоящая смена"
+  },
+  "upcomingEvents": {
+    "title": "Предстоящие события",
+    "noEvents": "Нет предстоящих событий",
+    "noEventsDescription": "Зайдите позже для волонтёрских возможностей.",
+    "viewCalendar": "Посмотреть календарь"
+  },
+  "notifications": {
+    "title": "Уведомления",
+    "markAllRead": "Отметить все как прочитанные",
+    "noNotifications": "Нет новых уведомлений",
+    "viewAll": "Посмотреть все уведомления"
+  },
+  "communityInsights": {
+    "title": "Аналитика сообщества",
+    "mostNeededCategories": "Самые востребованные категории",
+    "topVolunteers": "Лучшие волонтёры",
+    "recentMatches": "Недавние связи"
+  }
+}

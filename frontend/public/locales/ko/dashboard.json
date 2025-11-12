@@ -1,0 +1,77 @@
+{
+  "title": "대시보드",
+  "welcome": "환영합니다, {{name}}님!",
+  "subtitle": "커뮤니티 활동 개요",
+  "stats": {
+    "myPosts": "내 게시글",
+    "myResponses": "내 응답",
+    "myShifts": "내 봉사활동",
+    "hoursVolunteered": "봉사 시간",
+    "peopleHelped": "도운 사람",
+    "thanksReceived": "받은 감사",
+    "impactScore": "영향력 점수",
+    "memberSince": "가입일"
+  },
+  "quickActions": {
+    "title": "빠른 작업",
+    "createPost": "게시글 작성",
+    "browsePosts": "게시글 보기",
+    "findShifts": "봉사활동 찾기",
+    "findResources": "리소스 찾기",
+    "inviteFriends": "친구 초대",
+    "editProfile": "프로필 수정"
+  },
+  "recentActivity": {
+    "title": "최근 활동",
+    "noActivity": "아직 활동이 없습니다",
+    "noActivityDescription": "시작하려면 게시글을 작성하거나 봉사활동에 등록하세요!",
+    "viewAll": "모두 보기",
+    "postCreated": "게시글 작성: {{title}}",
+    "responseReceived": "{{name}}님이 응답했습니다",
+    "shiftCompleted": "봉사활동 완료: {{title}}",
+    "resourceAdded": "리소스 추가: {{name}}",
+    "thanksGiven": "{{name}}님에게 감사 전달",
+    "thanksReceived": "{{name}}님이 감사를 전했습니다"
+  },
+  "upcomingShifts": {
+    "title": "다가오는 봉사활동",
+    "noShifts": "예정된 봉사활동이 없습니다",
+    "noShiftsDescription": "봉사활동에 등록하여 커뮤니티를 도와주세요!",
+    "findShifts": "봉사활동 찾기",
+    "viewAll": "모두 보기",
+    "date": "날짜",
+    "time": "시간",
+    "location": "위치",
+    "organization": "조직"
+  },
+  "activePosts": {
+    "title": "활성 게시글",
+    "noPosts": "활성 게시글이 없습니다",
+    "noPostsDescription": "게시글을 작성하여 커뮤니티의 도움을 받으세요!",
+    "createPost": "게시글 작성",
+    "viewAll": "모두 보기",
+    "responses": "{{count}}개의 응답",
+    "noResponses": "아직 응답 없음",
+    "urgent": "긴급"
+  },
+  "nearbyNeeds": {
+    "title": "근처의 도움 요청",
+    "noNeeds": "근처에 도움 요청이 없습니다",
+    "viewAll": "모두 보기",
+    "distance": "{{distance}}마일 거리",
+    "postedDate": "{{date}} 전",
+    "respond": "응답하기"
+  },
+  "community": {
+    "title": "내 커뮤니티",
+    "members": "{{count}}명의 멤버",
+    "posts": "{{count}}개의 게시글",
+    "shifts": "{{count}}개의 봉사활동",
+    "resources": "{{count}}개의 리소스",
+    "viewCommunity": "커뮤니티 보기",
+    "pods": "내 그룹",
+    "noPods": "아직 그룹에 가입하지 않았습니다",
+    "findPods": "그룹 찾기",
+    "createPod": "그룹 만들기"
+  }
+}
