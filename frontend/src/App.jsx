@@ -1,14 +1,14 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { Layout } from './components/layout/Layout'
+import { LoginPage } from './features/auth/LoginPage'
+import { RegisterPage } from './features/auth/RegisterPage'
 
-// Placeholder pages - will be implemented in later phases
+// Placeholder pages - will be implemented as we progress through Phase 1
 const DashboardPage = () => <div className="p-8"><h1 className="text-3xl font-bold">Dashboard</h1><p className="mt-4">Welcome to CommunityCircle!</p></div>
-const PostsPage = () => <div className="p-8"><h1 className="text-3xl font-bold">Needs & Offers</h1><p className="mt-4">Coming soon - Project 1</p></div>
-const ShiftsPage = () => <div className="p-8"><h1 className="text-3xl font-bold">Volunteer Shifts</h1><p className="mt-4">Coming soon - Project 3</p></div>
-const PodsPage = () => <div className="p-8"><h1 className="text-3xl font-bold">Pods</h1><p className="mt-4">Coming soon - Project 2</p></div>
-const ResourcesPage = () => <div className="p-8"><h1 className="text-3xl font-bold">Pantry Locator</h1><p className="mt-4">Coming soon - Project 10</p></div>
-const LoginPage = () => <div className="p-8"><h1 className="text-3xl font-bold">Login</h1><p className="mt-4">Authentication coming soon</p></div>
-const RegisterPage = () => <div className="p-8"><h1 className="text-3xl font-bold">Register</h1><p className="mt-4">Authentication coming soon</p></div>
+const PostsPage = () => <div className="p-8"><h1 className="text-3xl font-bold">Needs & Offers</h1><p className="mt-4">Posts list coming soon</p></div>
+const ShiftsPage = () => <div className="p-8"><h1 className="text-3xl font-bold">Volunteer Shifts</h1><p className="mt-4">Coming soon - Phase 2</p></div>
+const PodsPage = () => <div className="p-8"><h1 className="text-3xl font-bold">Pods</h1><p className="mt-4">Coming soon - Phase 4</p></div>
+const ResourcesPage = () => <div className="p-8"><h1 className="text-3xl font-bold">Pantry Locator</h1><p className="mt-4">Coming soon - Phase 3</p></div>
 
 function App() {
   return (

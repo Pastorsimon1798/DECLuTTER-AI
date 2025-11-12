@@ -45,11 +45,13 @@ async def root():
     }
 
 
-# API routes will be added here as we build them
-# Example:
-# from app.api import auth, posts, shifts, pods, resources
-# app.include_router(auth.router, prefix=f"{settings.API_V1_PREFIX}/auth", tags=["auth"])
-# app.include_router(posts.router, prefix=f"{settings.API_V1_PREFIX}/posts", tags=["posts"])
+# Import API routers
+from app.api import auth, posts, matches
+
+# Include routers
+app.include_router(auth.router, prefix=f"{settings.API_V1_PREFIX}/auth", tags=["Authentication"])
+app.include_router(posts.router, prefix=f"{settings.API_V1_PREFIX}/posts", tags=["Posts"])
+app.include_router(matches.router, prefix=f"{settings.API_V1_PREFIX}/matches", tags=["Matches"])
 
 
 # Exception handlers
