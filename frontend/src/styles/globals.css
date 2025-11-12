@@ -2,9 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* React Big Calendar styles */
-@import 'react-big-calendar/lib/css/react-big-calendar.css';
-
 @layer base {
   * {
     @apply border-border;

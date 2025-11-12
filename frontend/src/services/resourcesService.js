@@ -22,6 +22,30 @@ export const resourcesService = {
     if (filters.is_community_contributed !== null) {
       params.append('is_community_contributed', filters.is_community_contributed);
     }
+    if (filters.sort_by) {
+      params.append('sort_by', filters.sort_by);
+    }
+
+    // Calculate limit based on radius: larger radius = more results
+    // For 500 miles (804672 meters), request up to 2000 results
+    // Scale proportionally: 5km (5000m) = 100, 500 miles = 2000
+    let limit = 100; // default
+    if (filters.radius) {
+      // Scale from 100 (at 5km) to 2000 (at 500 miles/804672m)
+      const minRadius = 5000; // 5km
+      const maxRadius = 804672; // 500 miles
+      const minLimit = 100;
+      const maxLimit = 2000;
+      
+      if (filters.radius >= maxRadius) {
+        limit = maxLimit;
+      } else if (filters.radius > minRadius) {
+        // Linear interpolation
+        const ratio = (filters.radius - minRadius) / (maxRadius - minRadius);
+        limit = Math.round(minLimit + (maxLimit - minLimit) * ratio);
+      }
+    }
+    params.append('limit', limit);
 
     const response = await api.get(`/resources/search?${params.toString()}`);
     return response.data;

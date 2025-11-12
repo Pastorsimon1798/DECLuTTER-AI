@@ -9,6 +9,8 @@
     "resources": "Resources",
     "shifts": "Shifts",
     "myShifts": "My Shifts",
+    "myPosts": "My Posts",
+    "myMatches": "My Matches",
     "profile": "Profile",
     "settings": "Settings",
     "logout": "Logout"

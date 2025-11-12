@@ -24,6 +24,7 @@ export const useResourcesStore = create((set, get) => ({
     open_now: false,
     population_tags: null,  // Phase 3.5
     is_community_contributed: null,  // Phase 3.5
+    sort_by: 'distance',  // Default sort: distance (or name if no location)
   },
 
   // Set filters
@@ -43,6 +44,7 @@ export const useResourcesStore = create((set, get) => ({
         open_now: false,
         population_tags: null,
         is_community_contributed: null,
+        sort_by: 'distance',
       },
     });
   },

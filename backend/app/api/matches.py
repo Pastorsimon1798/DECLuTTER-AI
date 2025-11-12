@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_
-from typing import List
+from typing import List, Optional
 
 from app.database import get_db
 from app.models.user import User
@@ -13,7 +13,7 @@ from app.schemas.post import (
     MatchResponse,
     MatchStatus,
 )
-from app.api.auth import get_current_user
+from app.api.auth import get_current_user, get_current_user_optional
 
 router = APIRouter()
 
@@ -108,7 +108,7 @@ async def get_my_matches(
     status: Optional[MatchStatus] = Query(None, description="Filter by status"),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_current_user_optional),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -116,6 +116,10 @@ async def get_my_matches(
 
     Can filter by role (requester/responder) and status
     """
+    # Return empty if no user (for testing without auth)
+    if not current_user:
+        return []
+    
     # Build filters
     role_filters = []
     if as_requester:

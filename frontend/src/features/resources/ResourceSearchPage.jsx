@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useResourcesStore } from '../../store/resourcesStore';
+import { useSettingsStore } from '../../store/settingsStore';
+import { formatDistance, radiusFromMeters, radiusToMeters, getRadiusSliderConfig } from '../../utils/units';
 import ResourceMapView from './ResourceMapView';
-import { MapPin, Search, Filter, List, Map, Bookmark, Phone, Globe, Clock } from 'lucide-react';
+import { MapPin, Search, Filter, List, Map, Bookmark, Phone, Globe, Clock, ArrowUpDown } from 'lucide-react';
 
 export default function ResourceSearchPage() {
   const navigate = useNavigate();
@@ -17,6 +19,7 @@ export default function ResourceSearchPage() {
     createBookmark,
     deleteBookmark,
   } = useResourcesStore();
+  const { unitSystem } = useSettingsStore();
 
   const [viewMode, setViewMode] = useState('list'); // 'list' or 'map'
   const [showFilters, setShowFilters] = useState(false);
@@ -184,10 +187,40 @@ export default function ResourceSearchPage() {
                   }}
                   className="w-full border-gray-300 rounded-lg"
                 >
-                  <option value="1000">1 km</option>
-                  <option value="5000">5 km</option>
-                  <option value="10000">10 km</option>
-                  <option value="25000">25 km</option>
+                  {unitSystem === 'imperial' ? (
+                    <>
+                      <option value="1609">1 mi</option>
+                      <option value="8047">5 mi</option>
+                      <option value="16093">10 mi</option>
+                      <option value="24140">15 mi</option>
+                      <option value="32187">20 mi</option>
+                      <option value="40234">25 mi</option>
+                      <option value="48280">30 mi</option>
+                      <option value="80467">50 mi</option>
+                      <option value="160934">100 mi</option>
+                      <option value="241401">150 mi</option>
+                      <option value="321869">200 mi</option>
+                      <option value="402336">250 mi</option>
+                      <option value="482803">300 mi</option>
+                      <option value="563270">350 mi</option>
+                      <option value="643738">400 mi</option>
+                      <option value="724205">450 mi</option>
+                      <option value="804672">500 mi</option>
+                    </>
+                  ) : (
+                    <>
+                      <option value="1000">1 km</option>
+                      <option value="5000">5 km</option>
+                      <option value="10000">10 km</option>
+                      <option value="25000">25 km</option>
+                      <option value="50000">50 km</option>
+                      <option value="100000">100 km</option>
+                      <option value="200000">200 km</option>
+                      <option value="400000">400 km</option>
+                      <option value="600000">600 km</option>
+                      <option value="804672">800 km</option>
+                    </>
+                  )}
                 </select>
               </div>
 
@@ -285,6 +318,26 @@ export default function ResourceSearchPage() {
             <Map size={16} />
             Map
           </button>
+        </div>
+        
+        {/* Sort Dropdown */}
+        <div className="flex items-center gap-2">
+          <ArrowUpDown size={16} className="text-gray-500" />
+          <select
+            value={filters.sort_by || 'distance'}
+            onChange={(e) => {
+              setFilters({ sort_by: e.target.value });
+              searchResources();
+            }}
+            className="px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="distance">Distance (Closest First)</option>
+            <option value="name_asc">Name (A-Z)</option>
+            <option value="name_desc">Name (Z-A)</option>
+            <option value="recent">Recently Added</option>
+            <option value="verified">Most Verified</option>
+            <option value="category">Category</option>
+          </select>
         </div>
       </div>
 

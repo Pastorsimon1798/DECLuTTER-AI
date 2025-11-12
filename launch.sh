@@ -152,9 +152,14 @@ install_python() {
         echo -e "${YELLOW}🐍 Python 3 not found. Installing Python...${NC}"
         
         if command_exists brew; then
-            brew install python@3.11
-            if [ $? -eq 0 ]; then
-                echo -e "${GREEN}✅ Python installed${NC}"
+            # Try Python 3.12 first (better package support), fallback to 3.11
+            if brew install python@3.12 2>/dev/null; then
+                echo -e "${GREEN}✅ Python 3.12 installed${NC}"
+                # Add to PATH
+                export PATH="/opt/homebrew/opt/python@3.12/bin:$PATH"
+            elif brew install python@3.11 2>/dev/null; then
+                echo -e "${GREEN}✅ Python 3.11 installed${NC}"
+                export PATH="/opt/homebrew/opt/python@3.11/bin:$PATH"
             else
                 echo -e "${RED}❌ Failed to install Python. Please install manually.${NC}"
                 exit 1
@@ -240,7 +245,14 @@ setup_backend() {
     # Check if virtual environment exists
     if [ ! -d "venv" ]; then
         echo -e "${YELLOW}Creating Python virtual environment...${NC}"
-        python3 -m venv venv
+        # Prefer Python 3.12 if available, fallback to system python3
+        if [ -f "/opt/homebrew/opt/python@3.12/bin/python3.12" ]; then
+            /opt/homebrew/opt/python@3.12/bin/python3.12 -m venv venv
+        elif [ -f "/opt/homebrew/bin/python3.12" ]; then
+            /opt/homebrew/bin/python3.12 -m venv venv
+        else
+            python3 -m venv venv
+        fi
     fi
     
     # Activate virtual environment
@@ -250,6 +262,14 @@ setup_backend() {
     if [ ! -f "venv/.deps_installed" ]; then
         echo -e "${YELLOW}Installing Python dependencies...${NC}"
         pip install --upgrade pip
+        
+        # Set up environment for building psycopg if needed
+        if [ -d "/opt/homebrew/opt/libpq" ]; then
+            export PATH="/opt/homebrew/opt/libpq/bin:$PATH"
+            export LDFLAGS="-L/opt/homebrew/opt/libpq/lib"
+            export CPPFLAGS="-I/opt/homebrew/opt/libpq/include"
+        fi
+        
         pip install -r requirements.txt
         touch venv/.deps_installed
     fi
@@ -266,7 +286,7 @@ API_V1_PREFIX=/api
 
 # Database Configuration
 DATABASE_URL=postgresql+asyncpg://postgres:devpass@localhost:5432/communitycircle
-DATABASE_URL_SYNC=postgresql://postgres:devpass@localhost:5432/communitycircle
+DATABASE_URL_SYNC=postgresql+psycopg://postgres:devpass@localhost:5432/communitycircle
 
 # Security - Generate a secure key: python -c "import secrets; print(secrets.token_urlsafe(32))"
 SECRET_KEY=$(python3 -c "import secrets; print(secrets.token_urlsafe(32))")

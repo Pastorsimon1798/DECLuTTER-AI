@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { usePostsStore } from '../../store/postsStore'
+import { useSettingsStore } from '../../store/settingsStore'
+import { radiusFromMeters, radiusToMeters, getRadiusSliderConfig } from '../../utils/units'
 import { MapPin, ArrowLeft } from 'lucide-react'
 
 export function CreatePostPage() {
   const navigate = useNavigate()
   const { createPost, loading, error, clearError } = usePostsStore()
+  const { unitSystem } = useSettingsStore()
 
   const [formData, setFormData] = useState({
     type: 'NEED',
@@ -19,6 +22,12 @@ export function CreatePostPage() {
 
   const [locationError, setLocationError] = useState(null)
   const [gettingLocation, setGettingLocation] = useState(false)
+
+  // Get radius slider config based on unit system
+  const radiusConfig = getRadiusSliderConfig(unitSystem)
+  const [radiusDisplayValue, setRadiusDisplayValue] = useState(
+    radiusFromMeters(formData.radius_meters, unitSystem)
+  )
 
   useEffect(() => {
     clearError()
@@ -41,11 +50,26 @@ export function CreatePostPage() {
 
   const handleChange = (e) => {
     const { name, value } = e.target
-    setFormData({
-      ...formData,
-      [name]: value,
-    })
+    if (name === 'radius_meters') {
+      // Convert display value to meters for API
+      const meters = radiusToMeters(parseFloat(value), unitSystem)
+      setFormData({
+        ...formData,
+        radius_meters: meters,
+      })
+      setRadiusDisplayValue(parseFloat(value))
+    } else {
+      setFormData({
+        ...formData,
+        [name]: value,
+      })
+    }
   }
+
+  // Update radius display when unit system changes
+  useEffect(() => {
+    setRadiusDisplayValue(radiusFromMeters(formData.radius_meters, unitSystem))
+  }, [unitSystem])
 
   const getCurrentLocation = () => {
     setGettingLocation(true)
@@ -267,15 +291,17 @@ export function CreatePostPage() {
           {/* Radius */}
           <div>
             <label className="block text-sm font-medium text-gray-700">
-              Search radius: {(formData.radius_meters / 1000).toFixed(1)}km
+              Search radius: {unitSystem === 'imperial' 
+                ? `${radiusDisplayValue.toFixed(1)} mi`
+                : `${radiusDisplayValue.toFixed(1)} km`}
             </label>
             <input
               type="range"
               name="radius_meters"
-              min="500"
-              max="50000"
-              step="500"
-              value={formData.radius_meters}
+              min={radiusConfig.min}
+              max={radiusConfig.max}
+              step={radiusConfig.step}
+              value={radiusDisplayValue}
               onChange={handleChange}
               className="mt-2 w-full"
             />

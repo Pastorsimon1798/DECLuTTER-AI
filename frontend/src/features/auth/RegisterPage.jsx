@@ -1,10 +1,18 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, Navigate } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
+
+// TEMPORARY: Disable auth for testing
+const AUTH_DISABLED = true
 
 export function RegisterPage() {
   const navigate = useNavigate()
   const { register, loading, error } = useAuthStore()
+
+  // Redirect to dashboard if auth is disabled
+  if (AUTH_DISABLED) {
+    return <Navigate to="/" replace />
+  }
   const [formData, setFormData] = useState({
     pseudonym: '',
     email: '',

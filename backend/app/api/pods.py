@@ -17,7 +17,7 @@ from app.schemas.pod import (
     PodPostCreate, PodPostUpdate, PodPostResponse,
     WellnessAlert
 )
-from app.api.auth import get_current_user
+from app.api.auth import get_current_user, get_current_user_optional
 
 router = APIRouter(prefix="/pods", tags=["pods"])
 
@@ -98,9 +98,12 @@ async def list_my_pods(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: Optional[User] = Depends(get_current_user_optional)
 ):
     """List all pods the current user is a member of"""
+    # Return empty if no user (for testing without auth)
+    if not current_user:
+        return []
     # Get user's pod memberships
     result = await db.execute(
         select(PodMember).where(

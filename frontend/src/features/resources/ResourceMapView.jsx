@@ -48,17 +48,11 @@ export default function ResourceMapView({ resources, center, onMarkerClick }) {
         />
 
         {resources.map((resource) => {
-          // Skip resources without location data
-          if (!resource.location_address) return null;
+          // Skip resources without location coordinates
+          if (!resource.lat || !resource.lon) return null;
 
-          // For now, we'll need coordinates. In a full implementation,
-          // we'd geocode the address or store coordinates in the database
-          // This is a placeholder - you'd need to add lat/lon to your resource model
-          const position = resource.location_point
-            ? [resource.location_point.coordinates[1], resource.location_point.coordinates[0]]
-            : null;
-
-          if (!position) return null;
+          // Use lat/lon from API response
+          const position = [resource.lat, resource.lon];
 
           return (
             <Marker key={resource.id} position={position}>

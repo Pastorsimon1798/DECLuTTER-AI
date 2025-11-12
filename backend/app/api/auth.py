@@ -1,9 +1,9 @@
 """Authentication API endpoints"""
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
-from typing import Optional
 from datetime import timedelta
 from uuid import UUID
 
@@ -30,6 +30,7 @@ from app.config import settings
 
 router = APIRouter()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_PREFIX}/auth/login")
+oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_PREFIX}/auth/login", auto_error=False)
 
 # Temporary storage for verification codes (in production, use Redis)
 verification_codes = {}
@@ -75,6 +76,42 @@ async def get_current_user(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Inactive user"
         )
+
+    return user
+
+
+async def get_current_user_optional(
+    token: Optional[str] = Depends(oauth2_scheme_optional),
+    db: AsyncSession = Depends(get_db)
+) -> Optional[User]:
+    """
+    Optional dependency to get the current authenticated user from JWT token.
+    Returns None if no token is provided or token is invalid.
+    """
+    if not token:
+        return None
+
+    # Decode token
+    payload = decode_access_token(token)
+    if payload is None:
+        return None
+
+    user_id: str = payload.get("sub")
+    if user_id is None:
+        return None
+
+    # Convert string UUID to UUID object
+    try:
+        user_uuid = UUID(user_id)
+    except ValueError:
+        return None
+
+    # Get user from database
+    result = await db.execute(select(User).where(User.id == user_uuid))
+    user = result.scalar_one_or_none()
+
+    if user is None or not user.is_active:
+        return None
 
     return user
 

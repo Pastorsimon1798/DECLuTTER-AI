@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { usePostsStore } from '../../store/postsStore'
+import { useSettingsStore } from '../../store/settingsStore'
+import { formatDistanceAway } from '../../utils/units'
 import { MapPin, Calendar, User, Filter, Plus } from 'lucide-react'
 
 export function PostsListPage() {
@@ -14,6 +16,7 @@ export function PostsListPage() {
     userLocation,
     setUserLocation,
   } = usePostsStore()
+  const { unitSystem } = useSettingsStore()
 
   const [showFilters, setShowFilters] = useState(false)
   const [localFilters, setLocalFilters] = useState(filters)
@@ -72,11 +75,6 @@ export function PostsListPage() {
     { value: 'other', label: 'Other' },
   ]
 
-  const formatDistance = (meters) => {
-    if (!meters) return ''
-    if (meters < 1000) return `${Math.round(meters)}m away`
-    return `${(meters / 1000).toFixed(1)}km away`
-  }
 
   const formatDate = (dateString) => {
     const date = new Date(dateString)
@@ -300,7 +298,7 @@ export function PostsListPage() {
                   <MapPin size={14} />
                   <span>
                     {post.distance_meters
-                      ? formatDistance(post.distance_meters)
+                      ? formatDistanceAway(post.distance_meters, unitSystem)
                       : 'Location hidden'}
                   </span>
                 </div>

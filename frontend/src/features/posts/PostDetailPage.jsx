@@ -2,12 +2,15 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { usePostsStore } from '../../store/postsStore'
 import { useAuthStore } from '../../store/authStore'
+import { useSettingsStore } from '../../store/settingsStore'
+import { formatDistanceAway, radiusFromMeters } from '../../utils/units'
 import { MapPin, Calendar, User, ArrowLeft, MessageCircle, Edit, Trash2 } from 'lucide-react'
 
 export function PostDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { user } = useAuthStore()
+  const { unitSystem } = useSettingsStore()
   const {
     currentPost,
     loading,
@@ -27,12 +30,6 @@ export function PostDetailPage() {
       getPost(id)
     }
   }, [id])
-
-  const formatDistance = (meters) => {
-    if (!meters) return 'Location hidden for privacy'
-    if (meters < 1000) return `${Math.round(meters)}m away`
-    return `${(meters / 1000).toFixed(1)}km away`
-  }
 
   const formatDate = (dateString) => {
     const date = new Date(dateString)
@@ -197,9 +194,11 @@ export function PostDetailPage() {
           <div className="flex items-center gap-3 text-sm text-gray-700">
             <MapPin size={18} className="text-gray-500" />
             <div>
-              <span className="font-medium">Location:</span> {formatDistance(currentPost.distance_meters)}
+              <span className="font-medium">Location:</span> {formatDistanceAway(currentPost.distance_meters, unitSystem)}
               <span className="ml-2 text-xs text-gray-500">
-                (within {(currentPost.radius_meters / 1000).toFixed(1)}km radius)
+                (within {unitSystem === 'imperial' 
+                  ? `${radiusFromMeters(currentPost.radius_meters, unitSystem).toFixed(1)} mi` 
+                  : `${radiusFromMeters(currentPost.radius_meters, unitSystem).toFixed(1)} km`} radius)
               </span>
             </div>
           </div>

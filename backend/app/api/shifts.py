@@ -11,10 +11,10 @@ from app.models.user import User
 from app.models.shift import Shift, ShiftSignup, Organization
 from app.schemas.shift import (
     ShiftCreate, ShiftUpdate, ShiftResponse, ShiftWithOrganization,
-    ShiftSignupCreate, ShiftSignupUpdate, ShiftSignupResponse, ShiftSignupWithDetails,
+    ShiftSignupBase, ShiftSignupCreate, ShiftSignupUpdate, ShiftSignupResponse, ShiftSignupWithDetails,
     ShiftStatus
 )
-from app.api.auth import get_current_user
+from app.api.auth import get_current_user, get_current_user_optional
 from geoalchemy2.shape import from_shape
 from shapely.geometry import Point
 
@@ -276,11 +276,14 @@ async def signup_for_shift(
 @router.get("/my-shifts", response_model=List[ShiftSignupWithDetails])
 async def get_my_shifts(
     status_filter: Optional[str] = Query(None, alias="status"),
-    upcoming_only: bool = False,
+    upcoming_only: bool = Query(False, description="Only return upcoming shifts"),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: Optional[User] = Depends(get_current_user_optional)
 ):
     """Get current user's shift signups"""
+    # Return empty if no user (for testing without auth)
+    if not current_user:
+        return []
 
     query = select(ShiftSignup).options(
         selectinload(ShiftSignup.shift).selectinload(Shift.organization)
@@ -395,5 +398,3 @@ async def cancel_signup(
     return None
 
 
-# Import ShiftSignupBase at the top
-from app.schemas.shift import ShiftSignupBase

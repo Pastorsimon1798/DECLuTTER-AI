@@ -1,25 +1,49 @@
 {
+  "greeting": {
+    "morning": "Buenos días",
+    "afternoon": "Buenas tardes",
+    "evening": "Buenas noches"
+  },
   "welcome": {
     "title": "¡Bienvenido, {{name}}!",
-    "subtitle": "Esto es lo que está pasando en tu comunidad"
+    "subtitle": "Bienvenido a tu panel de CommunityCircle"
   },
   "stats": {
     "activePosts": "Publicaciones Activas",
+    "pendingMatches": "Coincidencias Pendientes",
+    "completed": "Completadas",
+    "completedMessage": "¡Excelente trabajo ayudando a tu comunidad!",
     "upcomingShifts": "Turnos Próximos",
+    "myPods": "Mis Círculos",
+    "viewAllPosts": "Ver todas las publicaciones",
+    "viewMatches": "Ver coincidencias",
+    "viewMyShifts": "Ver mis turnos",
+    "viewMyPods": "Ver mis círculos",
     "bookmarkedResources": "Recursos Guardados",
     "connections": "Conexiones"
   },
   "quickActions": {
     "title": "Acciones Rápidas",
+    "postNeedOffer": "Publicar Necesidad/Oferta",
+    "postNeedOfferDesc": "Comparte lo que necesitas o puedes ofrecer",
+    "browsePosts": "Explorar Publicaciones",
+    "browsePostsDesc": "Encuentra necesidades y ofertas cercanas",
+    "myMatches": "Mis Coincidencias",
+    "myMatchesDesc": "Ver tus conexiones",
+    "myPosts": "Mis Publicaciones",
+    "myPostsDesc": "Gestiona tus publicaciones",
+    "browseShifts": "Explorar Turnos",
+    "browseShiftsDesc": "Encuentra oportunidades de voluntariado",
+    "createPod": "Crear Círculo",
+    "createPodDesc": "Inicia un círculo de apoyo cercano",
     "createPost": "Crear una Publicación",
     "findResources": "Buscar Recursos",
-    "browseShifts": "Explorar Turnos",
     "viewProfile": "Ver Perfil"
   },
   "recentActivity": {
     "title": "Actividad Reciente",
     "noActivity": "No hay actividad reciente",
-    "noActivityDescription": "Comienza a explorar para ver tu actividad aquí.",
+    "noActivityDescription": "Comienza publicando una necesidad u oferta, o explora publicaciones existentes",
     "viewAll": "Ver Todo"
   },
   "upcomingEvents": {

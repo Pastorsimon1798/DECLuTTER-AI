@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../../store/authStore'
 import { usePostsStore } from '../../store/postsStore'
 import { useShiftsStore } from '../../store/shiftsStore'
@@ -7,6 +8,7 @@ import { usePodsStore } from '../../store/podsStore'
 import { Plus, MessageCircle, FileText, TrendingUp, MapPin, Calendar, CircleDot, Heart } from 'lucide-react'
 
 export function DashboardPage() {
+  const { t } = useTranslation(['dashboard', 'common'])
   const { user } = useAuthStore()
   const { myPosts, matches, getMyPosts, getMyMatches } = usePostsStore()
   const { myShifts, fetchMyShifts } = useShiftsStore()
@@ -46,9 +48,9 @@ export function DashboardPage() {
 
   const getGreeting = () => {
     const hour = new Date().getHours()
-    if (hour < 12) return 'Good morning'
-    if (hour < 18) return 'Good afternoon'
-    return 'Good evening'
+    if (hour < 12) return t('greeting.morning', 'Good morning')
+    if (hour < 18) return t('greeting.afternoon', 'Good afternoon')
+    return t('greeting.evening', 'Good evening')
   }
 
   return (
@@ -59,7 +61,7 @@ export function DashboardPage() {
           {getGreeting()}, {user?.pseudonym}! 👋
         </h1>
         <p className="mt-2 text-gray-600">
-          Welcome to your CommunityCircle dashboard
+          {t('welcome.subtitle', 'Welcome to your CommunityCircle dashboard')}
         </p>
       </div>
 
@@ -68,7 +70,7 @@ export function DashboardPage() {
         <div className="card bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-blue-600">Active Posts</p>
+              <p className="text-sm font-medium text-blue-600">{t('stats.activePosts')}</p>
               <p className="mt-2 text-3xl font-bold text-blue-900">{stats.activePosts}</p>
             </div>
             <FileText className="text-blue-600" size={40} />
@@ -77,14 +79,14 @@ export function DashboardPage() {
             to="/posts/my"
             className="mt-4 inline-flex items-center text-sm font-medium text-blue-700 hover:text-blue-900"
           >
-            View all posts →
+            {t('stats.viewAllPosts', 'View all posts')} →
           </Link>
         </div>
 
         <div className="card bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-yellow-600">Pending Matches</p>
+              <p className="text-sm font-medium text-yellow-600">{t('stats.pendingMatches', 'Pending Matches')}</p>
               <p className="mt-2 text-3xl font-bold text-yellow-900">{stats.pendingMatches}</p>
             </div>
             <MessageCircle className="text-yellow-600" size={40} />
@@ -93,27 +95,27 @@ export function DashboardPage() {
             to="/matches"
             className="mt-4 inline-flex items-center text-sm font-medium text-yellow-700 hover:text-yellow-900"
           >
-            View matches →
+            {t('stats.viewMatches', 'View matches')} →
           </Link>
         </div>
 
         <div className="card bg-gradient-to-br from-green-50 to-green-100 border-green-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-green-600">Completed</p>
+              <p className="text-sm font-medium text-green-600">{t('stats.completed', 'Completed')}</p>
               <p className="mt-2 text-3xl font-bold text-green-900">{stats.completedMatches}</p>
             </div>
             <TrendingUp className="text-green-600" size={40} />
           </div>
           <p className="mt-4 text-sm text-green-700">
-            Great job helping your community!
+            {t('stats.completedMessage', 'Great job helping your community!')}
           </p>
         </div>
 
         <div className="card bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-purple-600">Upcoming Shifts</p>
+              <p className="text-sm font-medium text-purple-600">{t('stats.upcomingShifts')}</p>
               <p className="mt-2 text-3xl font-bold text-purple-900">{stats.upcomingShifts}</p>
             </div>
             <Calendar className="text-purple-600" size={40} />
@@ -122,14 +124,14 @@ export function DashboardPage() {
             to="/shifts/my-shifts"
             className="mt-4 inline-flex items-center text-sm font-medium text-purple-700 hover:text-purple-900"
           >
-            View my shifts →
+            {t('stats.viewMyShifts', 'View my shifts')} →
           </Link>
         </div>
 
         <div className="card bg-gradient-to-br from-pink-50 to-pink-100 border-pink-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-pink-600">My Pods</p>
+              <p className="text-sm font-medium text-pink-600">{t('stats.myPods', 'My Pods')}</p>
               <p className="mt-2 text-3xl font-bold text-pink-900">{stats.myPods}</p>
             </div>
             <CircleDot className="text-pink-600" size={40} />
@@ -138,14 +140,14 @@ export function DashboardPage() {
             to="/pods"
             className="mt-4 inline-flex items-center text-sm font-medium text-pink-700 hover:text-pink-900"
           >
-            View my pods →
+            {t('stats.viewMyPods', 'View my pods')} →
           </Link>
         </div>
       </div>
 
       {/* Quick Actions */}
       <div className="mb-8">
-        <h2 className="mb-4 text-xl font-semibold text-gray-900">Quick Actions</h2>
+        <h2 className="mb-4 text-xl font-semibold text-gray-900">{t('quickActions.title')}</h2>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           <Link
             to="/posts/create"
@@ -154,9 +156,9 @@ export function DashboardPage() {
             <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary-100">
               <Plus className="text-primary-600" size={24} />
             </div>
-            <h3 className="font-semibold text-gray-900">Post Need/Offer</h3>
+            <h3 className="font-semibold text-gray-900">{t('quickActions.postNeedOffer', 'Post Need/Offer')}</h3>
             <p className="mt-1 text-sm text-gray-600">
-              Share what you need or can offer
+              {t('quickActions.postNeedOfferDesc', 'Share what you need or can offer')}
             </p>
           </Link>
 
@@ -167,9 +169,9 @@ export function DashboardPage() {
             <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-blue-100">
               <MapPin className="text-blue-600" size={24} />
             </div>
-            <h3 className="font-semibold text-gray-900">Browse Posts</h3>
+            <h3 className="font-semibold text-gray-900">{t('quickActions.browsePosts', 'Browse Posts')}</h3>
             <p className="mt-1 text-sm text-gray-600">
-              Find needs and offers nearby
+              {t('quickActions.browsePostsDesc', 'Find needs and offers nearby')}
             </p>
           </Link>
 
@@ -180,9 +182,9 @@ export function DashboardPage() {
             <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
               <MessageCircle className="text-green-600" size={24} />
             </div>
-            <h3 className="font-semibold text-gray-900">My Matches</h3>
+            <h3 className="font-semibold text-gray-900">{t('quickActions.myMatches', 'My Matches')}</h3>
             <p className="mt-1 text-sm text-gray-600">
-              View your connections
+              {t('quickActions.myMatchesDesc', 'View your connections')}
             </p>
           </Link>
 
@@ -193,9 +195,9 @@ export function DashboardPage() {
             <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-purple-100">
               <FileText className="text-purple-600" size={24} />
             </div>
-            <h3 className="font-semibold text-gray-900">My Posts</h3>
+            <h3 className="font-semibold text-gray-900">{t('quickActions.myPosts', 'My Posts')}</h3>
             <p className="mt-1 text-sm text-gray-600">
-              Manage your posts
+              {t('quickActions.myPostsDesc', 'Manage your posts')}
             </p>
           </Link>
 
@@ -206,9 +208,9 @@ export function DashboardPage() {
             <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100">
               <Calendar className="text-indigo-600" size={24} />
             </div>
-            <h3 className="font-semibold text-gray-900">Browse Shifts</h3>
+            <h3 className="font-semibold text-gray-900">{t('quickActions.browseShifts')}</h3>
             <p className="mt-1 text-sm text-gray-600">
-              Find volunteer opportunities
+              {t('quickActions.browseShiftsDesc', 'Find volunteer opportunities')}
             </p>
           </Link>
 
@@ -219,9 +221,9 @@ export function DashboardPage() {
             <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-pink-100">
               <CircleDot className="text-pink-600" size={24} />
             </div>
-            <h3 className="font-semibold text-gray-900">Create Pod</h3>
+            <h3 className="font-semibold text-gray-900">{t('quickActions.createPod', 'Create Pod')}</h3>
             <p className="mt-1 text-sm text-gray-600">
-              Start a close-knit support circle
+              {t('quickActions.createPodDesc', 'Start a close-knit support circle')}
             </p>
           </Link>
         </div>
@@ -229,13 +231,13 @@ export function DashboardPage() {
 
       {/* Recent Activity */}
       <div>
-        <h2 className="mb-4 text-xl font-semibold text-gray-900">Recent Activity</h2>
+        <h2 className="mb-4 text-xl font-semibold text-gray-900">{t('recentActivity.title')}</h2>
         <div className="card">
           {myPosts.length === 0 && matches.length === 0 ? (
             <div className="py-8 text-center text-gray-600">
-              <p className="mb-2">No recent activity</p>
+              <p className="mb-2">{t('recentActivity.noActivity')}</p>
               <p className="text-sm text-gray-500">
-                Start by posting a need or offer, or browse existing posts
+                {t('recentActivity.noActivityDescription')}
               </p>
             </div>
           ) : (

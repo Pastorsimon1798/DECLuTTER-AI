@@ -82,6 +82,8 @@ class ResourceListingResponse(ResourceListingBase):
     id: UUID
     external_id: Optional[str] = None
     location_geohash: Optional[str] = None
+    lat: Optional[float] = None  # Extracted from location_point for map display
+    lon: Optional[float] = None  # Extracted from location_point for map display
     last_verified_at: Optional[datetime] = None
     cached_at: datetime
     cache_expires_at: datetime
@@ -139,7 +141,7 @@ class ResourceSearchParams(BaseModel):
     subcategory: Optional[str] = None
     lat: Optional[float] = None
     lon: Optional[float] = None
-    radius: Optional[int] = Field(default=5000, ge=100, le=50000)  # meters
+    radius: Optional[int] = Field(default=5000, ge=100, le=804672)  # meters (up to 500 miles)
     open_now: bool = False  # Filter by currently open
     languages: Optional[List[str]] = None
     accessibility_features: Optional[List[str]] = None

@@ -1,18 +1,18 @@
-`# FastAPI and ASGI server
-fastapi[all]==0.104.1
-uvicorn[standard]==0.24.0
-python-multipart==0.0.6
+# FastAPI and ASGI server
+fastapi[all]==0.115.0
+uvicorn[standard]==0.32.0
+python-multipart==0.0.12
 
 # Database
-sqlalchemy[asyncio]==2.0.23
-alembic==1.12.1
-psycopg2-binary==2.9.9
-asyncpg==0.29.0
+sqlalchemy[asyncio]==2.0.36
+alembic==1.13.2
+psycopg[binary]==3.2.12
+asyncpg==0.30.0
 
 # Authentication & Security
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
-pydantic[email]==2.5.0
+pydantic[email]==2.10.0
 
 # Background tasks
 celery==5.3.4
@@ -25,6 +25,8 @@ brevo-python==1.0.0
 # Geospatial
 geohash2==1.1
 geoalchemy2==0.14.3
+shapely==2.1.2
+numpy==2.3.4
 
 # Utilities
 python-dotenv==1.0.0

@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, or_, func
+from sqlalchemy import select, and_, or_, func, asc, desc
 from sqlalchemy.orm import selectinload
 from typing import List, Optional
 from uuid import UUID
 from datetime import datetime, timedelta
+from enum import Enum
 
 from app.database import get_db
 from app.models.user import User
@@ -14,11 +15,11 @@ from app.schemas.resource import (
     ResourceBookmarkCreate, ResourceBookmarkUpdate, ResourceBookmarkResponse,
     ResourceBookmarkWithDetails, ResourceSearchParams, ResourceVerificationCreate
 )
-from app.api.auth import get_current_user
+from app.api.auth import get_current_user, get_current_user_optional
 from app.services.geohash_service import GeohashService
 from app.services.two11_client import two11_client
-from geoalchemy2.shape import from_shape
-from geoalchemy2.functions import ST_DWithin, ST_Distance
+from geoalchemy2.shape import from_shape, to_shape
+from geoalchemy2.functions import ST_DWithin, ST_Distance, ST_X, ST_Y
 from shapely.geometry import Point
 from geoalchemy2 import WKTElement
 
@@ -26,11 +27,21 @@ from geoalchemy2 import WKTElement
 router = APIRouter(prefix="/resources", tags=["resources"])
 
 
+class ResourceSortBy(str, Enum):
+    """Sorting options for resources"""
+    DISTANCE = "distance"  # Closest first (requires lat/lon)
+    NAME_ASC = "name_asc"  # Name A-Z
+    NAME_DESC = "name_desc"  # Name Z-A
+    RECENT = "recent"  # Most recently added
+    VERIFIED = "verified"  # Most verified first
+    CATEGORY = "category"  # By category then name
+
+
 @router.get("/search", response_model=List[ResourceListingResponse])
 async def search_resources(
     lat: Optional[float] = None,
     lon: Optional[float] = None,
-    radius: int = Query(5000, ge=100, le=50000),  # meters
+    radius: int = Query(5000, ge=100, le=804672),  # meters (up to 500 miles)
     category: Optional[str] = None,
     subcategory: Optional[str] = None,
     query: Optional[str] = None,
@@ -38,9 +49,10 @@ async def search_resources(
     population_tags: Optional[str] = None,  # Comma-separated list
     is_community_contributed: Optional[bool] = None,
     skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=100),
+    limit: int = Query(100, ge=1, le=2000),  # Increased max to 2000 for large radius searches
+    sort_by: ResourceSortBy = Query(ResourceSortBy.DISTANCE, description="Sort order for results"),
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user)
+    current_user: Optional[User] = Depends(get_current_user_optional)
 ):
     """
     Search for resources with location and filters
@@ -82,11 +94,10 @@ async def search_resources(
     # Base query
     query_obj = select(ResourceListing)
 
-    # Location-based search
+    # Create search point if location provided (for distance calculations)
+    search_point = None
     if lat and lon:
-        # Create point for search location
         search_point = WKTElement(f'POINT({lon} {lat})', srid=4326)
-
         # Filter by distance
         filters.append(
             ST_DWithin(
@@ -96,12 +107,37 @@ async def search_resources(
             )
         )
 
-        # Order by distance
+    # Apply sorting based on sort_by parameter
+    if sort_by == ResourceSortBy.DISTANCE:
+        if search_point:
+            # Order by distance (closest first)
+            query_obj = query_obj.order_by(
+                ST_Distance(ResourceListing.location_point, search_point)
+            )
+        else:
+            # Fallback to name if no location
+            query_obj = query_obj.order_by(ResourceListing.name)
+    elif sort_by == ResourceSortBy.NAME_ASC:
+        query_obj = query_obj.order_by(ResourceListing.name)
+    elif sort_by == ResourceSortBy.NAME_DESC:
+        query_obj = query_obj.order_by(desc(ResourceListing.name))
+    elif sort_by == ResourceSortBy.RECENT:
+        query_obj = query_obj.order_by(desc(ResourceListing.created_at))
+    elif sort_by == ResourceSortBy.VERIFIED:
+        # Most verified first, then by verification date, then by name
         query_obj = query_obj.order_by(
-            ST_Distance(ResourceListing.location_point, search_point)
+            desc(ResourceListing.verification_count),
+            desc(ResourceListing.verified_at),
+            ResourceListing.name
+        )
+    elif sort_by == ResourceSortBy.CATEGORY:
+        # By category, then by name
+        query_obj = query_obj.order_by(
+            ResourceListing.category,
+            ResourceListing.name
         )
     else:
-        # Order by name if no location
+        # Default: name ascending
         query_obj = query_obj.order_by(ResourceListing.name)
 
     # Apply all filters
@@ -157,7 +193,10 @@ async def search_resources(
         except Exception as e:
             print(f"Error fetching from 211 API: {e}")
 
-    # Check bookmarks for current user
+    # Build response with coordinates and bookmark info
+    response_resources = []
+    bookmark_map = {}
+    
     if current_user:
         resource_ids = [r.id for r in resources]
         bookmark_result = await db.execute(
@@ -171,24 +210,34 @@ async def search_resources(
         bookmarks = bookmark_result.scalars().all()
         bookmark_map = {b.resource_id: b.id for b in bookmarks}
 
-        # Add bookmark info to response
-        response_resources = []
-        for resource in resources:
-            resource_dict = ResourceListingResponse.model_validate(resource).model_dump()
+    # Convert resources to response format with coordinates
+    for resource in resources:
+        resource_dict = ResourceListingResponse.model_validate(resource).model_dump()
+        
+        # Extract lat/lon from location_point for map display
+        if resource.location_point:
+            try:
+                point = to_shape(resource.location_point)
+                resource_dict['lat'] = point.y
+                resource_dict['lon'] = point.x
+            except Exception as e:
+                print(f"Error extracting coordinates for resource {resource.id}: {e}")
+        
+        # Add bookmark info if user is logged in
+        if current_user:
             resource_dict['is_bookmarked'] = resource.id in bookmark_map
             resource_dict['bookmark_id'] = bookmark_map.get(resource.id)
-            response_resources.append(ResourceListingResponse(**resource_dict))
+        
+        response_resources.append(ResourceListingResponse(**resource_dict))
 
-        return response_resources
-
-    return resources
+    return response_resources
 
 
 @router.get("/{resource_id}", response_model=ResourceListingResponse)
 async def get_resource(
     resource_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user)
+    current_user: Optional[User] = Depends(get_current_user_optional)
 ):
     """Get resource by ID"""
     result = await db.execute(
@@ -204,6 +253,16 @@ async def get_resource(
 
     # Check if user has bookmarked this resource
     resource_dict = ResourceListingResponse.model_validate(resource).model_dump()
+    
+    # Extract lat/lon from location_point for map display
+    if resource.location_point:
+        try:
+            point = to_shape(resource.location_point)
+            resource_dict['lat'] = point.y
+            resource_dict['lon'] = point.x
+        except Exception as e:
+            print(f"Error extracting coordinates for resource {resource.id}: {e}")
+    
     if current_user:
         bookmark_result = await db.execute(
             select(ResourceBookmark).where(

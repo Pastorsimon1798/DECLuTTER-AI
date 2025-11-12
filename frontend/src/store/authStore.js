@@ -4,9 +4,35 @@
 import { create } from 'zustand'
 import authService from '../services/authService'
 
+// TEMPORARY: Disable auth for testing - set to false to re-enable
+const AUTH_DISABLED = true
+
 export const useAuthStore = create((set, get) => ({
-  user: authService.getUser(),
-  isAuthenticated: authService.isAuthenticated(),
+  authDisabled: AUTH_DISABLED || (
+    import.meta.env.VITE_AUTH_DISABLED &&
+    import.meta.env.VITE_AUTH_DISABLED.toString().toLowerCase() === 'true'
+  ),
+  user: (() => {
+    const authDisabled = AUTH_DISABLED || (
+      import.meta.env.VITE_AUTH_DISABLED &&
+      import.meta.env.VITE_AUTH_DISABLED.toString().toLowerCase() === 'true'
+    )
+    if (authDisabled) {
+      return {
+        id: '00000000-0000-0000-0000-000000000000',
+        pseudonym: 'Test User',
+        email: 'test@example.com',
+      }
+    }
+    return authService.getUser()
+  })(),
+  isAuthenticated: (() => {
+    const authDisabled = AUTH_DISABLED || (
+      import.meta.env.VITE_AUTH_DISABLED &&
+      import.meta.env.VITE_AUTH_DISABLED.toString().toLowerCase() === 'true'
+    )
+    return authDisabled ? true : authService.isAuthenticated()
+  })(),
   loading: false,
   error: null,
 
@@ -15,6 +41,15 @@ export const useAuthStore = create((set, get) => ({
    */
   register: async (userData) => {
     set({ loading: true, error: null })
+    if (get().authDisabled) {
+      const mockUser = {
+        id: '00000000-0000-0000-0000-000000000000',
+        pseudonym: userData?.pseudonym || 'Test User',
+        email: userData?.email || 'test@example.com',
+      }
+      set({ user: mockUser, isAuthenticated: true, loading: false })
+      return { user: mockUser, access_token: 'bypass-token' }
+    }
     try {
       const data = await authService.register(userData)
       set({ user: data.user, isAuthenticated: true, loading: false })
@@ -31,6 +66,15 @@ export const useAuthStore = create((set, get) => ({
    */
   login: async (username, password) => {
     set({ loading: true, error: null })
+    if (get().authDisabled) {
+      const mockUser = {
+        id: '00000000-0000-0000-0000-000000000000',
+        pseudonym: username || 'Test User',
+        email: 'test@example.com',
+      }
+      set({ user: mockUser, isAuthenticated: true, loading: false })
+      return { user: mockUser, access_token: 'bypass-token' }
+    }
     try {
       const data = await authService.login(username, password)
       set({ user: data.user, isAuthenticated: true, loading: false })
@@ -46,6 +90,10 @@ export const useAuthStore = create((set, get) => ({
    * Logout user
    */
   logout: async () => {
+    if (get().authDisabled) {
+      set({ user: null, isAuthenticated: false, error: null })
+      return
+    }
     try {
       await authService.logout()
     } finally {
@@ -57,6 +105,9 @@ export const useAuthStore = create((set, get) => ({
    * Refresh user data
    */
   refreshUser: async () => {
+    if (get().authDisabled) {
+      return
+    }
     try {
       const user = await authService.getCurrentUser()
       set({ user })

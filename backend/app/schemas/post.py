@@ -40,7 +40,7 @@ class PostBase(BaseModel):
     category: str = Field(..., min_length=1, max_length=50)
     title: str = Field(..., min_length=3, max_length=200)
     description: Optional[str] = Field(None, max_length=2000)
-    radius_meters: int = Field(default=1000, ge=100, le=50000)
+    radius_meters: int = Field(default=1000, ge=100, le=804672)  # up to 500 miles
     visibility: PostVisibility = Field(default=PostVisibility.PUBLIC)
 
 
@@ -59,7 +59,7 @@ class PostUpdate(BaseModel):
     title: Optional[str] = Field(None, min_length=3, max_length=200)
     description: Optional[str] = Field(None, max_length=2000)
     status: Optional[PostStatus] = None
-    radius_meters: Optional[int] = Field(None, ge=100, le=50000)
+    radius_meters: Optional[int] = Field(None, ge=100, le=804672)  # up to 500 miles
     visibility: Optional[PostVisibility] = None
 
 
@@ -84,7 +84,7 @@ class PostSearchParams(BaseModel):
     type: Optional[PostType] = None
     category: Optional[str] = None
     location: Optional[LocationInput] = None
-    radius_meters: int = Field(default=5000, ge=100, le=50000)
+    radius_meters: int = Field(default=5000, ge=100, le=804672)  # up to 500 miles
     status: PostStatus = Field(default=PostStatus.OPEN)
     limit: int = Field(default=50, ge=1, le=100)
     offset: int = Field(default=0, ge=0)

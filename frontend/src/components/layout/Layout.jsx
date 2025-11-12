@@ -1,20 +1,23 @@
 import { useState } from 'react'
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Home, Search, Users, MessageCircle, LogOut, User as UserIcon, FileText, Calendar, MapPin, CircleDot } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
 import LanguageSelector from '../LanguageSelector'
+import UnitSelector from '../UnitSelector'
 
 export function Layout() {
   const location = useLocation()
   const navigate = useNavigate()
   const { user, logout } = useAuthStore()
+  const { t } = useTranslation('common')
   const [showUserMenu, setShowUserMenu] = useState(false)
 
   const navigation = [
-    { name: 'Home', href: '/', icon: Home },
-    { name: 'Posts', href: '/posts', icon: Search },
-    { name: 'Resources', href: '/resources', icon: MapPin },
-    { name: 'Shifts', href: '/shifts', icon: Calendar },
+    { name: t('navigation.home'), href: '/', icon: Home },
+    { name: t('navigation.posts'), href: '/posts', icon: Search },
+    { name: t('navigation.resources'), href: '/resources', icon: MapPin },
+    { name: t('navigation.shifts'), href: '/shifts', icon: Calendar },
     { name: 'Pods', href: '/pods', icon: CircleDot },
   ]
 
@@ -62,6 +65,9 @@ export function Layout() {
                 <MessageCircle size={24} />
               </Link>
 
+              {/* Unit selector */}
+              <UnitSelector variant="dropdown" />
+
               {/* Language selector */}
               <LanguageSelector variant="dropdown" />
 
@@ -100,7 +106,7 @@ export function Layout() {
                           onClick={() => setShowUserMenu(false)}
                         >
                           <FileText size={16} />
-                          My Posts
+                          {t('navigation.myPosts', 'My Posts')}
                         </Link>
                         <Link
                           to="/matches"
@@ -108,7 +114,7 @@ export function Layout() {
                           onClick={() => setShowUserMenu(false)}
                         >
                           <MessageCircle size={16} />
-                          My Matches
+                          {t('navigation.myMatches', 'My Matches')}
                         </Link>
                         <Link
                           to="/shifts/my-shifts"
@@ -116,7 +122,7 @@ export function Layout() {
                           onClick={() => setShowUserMenu(false)}
                         >
                           <Calendar size={16} />
-                          My Shifts
+                          {t('navigation.myShifts')}
                         </Link>
                       </div>
 
@@ -126,7 +132,7 @@ export function Layout() {
                           className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-700 hover:bg-red-50"
                         >
                           <LogOut size={16} />
-                          Logout
+                          {t('navigation.logout')}
                         </button>
                       </div>
                     </div>

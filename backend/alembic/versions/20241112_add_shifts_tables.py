@@ -12,7 +12,7 @@ import geoalchemy2
 
 # revision identifiers, used by Alembic.
 revision = '20241112_add_shifts'
-down_revision = '20241112_initial_schema'
+down_revision = '001_initial_schema'
 branch_labels = None
 depends_on = None
 

@@ -19,7 +19,7 @@ from app.schemas.post import (
     MatchUpdate,
     MatchResponse,
 )
-from app.api.auth import get_current_user
+from app.api.auth import get_current_user, get_current_user_optional
 from app.services.geohash_service import GeohashService
 from geoalchemy2.functions import ST_MakePoint, ST_Distance
 from geoalchemy2 import Geography
@@ -41,7 +41,7 @@ async def create_post(
     - **title**: Short title
     - **description**: Detailed description
     - **location**: Lat/lon coordinates
-    - **radius_meters**: Search radius (100-50000)
+    - **radius_meters**: Search radius (100-804672 meters, up to 500 miles)
     - **visibility**: public, circles, or private
     """
     # Encode location to geohash for privacy
@@ -86,12 +86,12 @@ async def search_posts(
     category: Optional[str] = Query(None, description="Filter by category"),
     lat: Optional[float] = Query(None, ge=-90, le=90, description="User latitude"),
     lon: Optional[float] = Query(None, ge=-180, le=180, description="User longitude"),
-    radius: int = Query(5000, ge=100, le=50000, description="Search radius in meters"),
+    radius: int = Query(5000, ge=100, le=804672, description="Search radius in meters (up to 500 miles)"),
     status: PostStatus = Query(PostStatus.OPEN, description="Filter by status"),
     limit: int = Query(50, ge=1, le=100, description="Max results"),
     offset: int = Query(0, ge=0, description="Results offset"),
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user)
+    current_user: Optional[User] = Depends(get_current_user_optional)
 ):
     """
     Search for posts with optional filters
@@ -176,7 +176,7 @@ async def search_posts(
 async def get_post(
     post_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user)
+    current_user: Optional[User] = Depends(get_current_user_optional)
 ):
     """
     Get a specific post by ID
@@ -294,12 +294,16 @@ async def get_my_posts(
     status: Optional[PostStatus] = None,
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_current_user_optional),
     db: AsyncSession = Depends(get_db)
 ):
     """
     Get current user's posts
     """
+    # Return empty if no user (for testing without auth)
+    if not current_user:
+        return []
+    
     filters = [Post.author_id == current_user.id]
 
     if type:
