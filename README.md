@@ -22,7 +22,33 @@ flutter pub get
 
 This pulls down the `camera`, `permission_handler`, `image`, and `tflite_flutter` packages needed for the capture + detection debug experience.
 
-Drop your quantized model at `app/assets/model/detector.tflite` with matching labels in `app/assets/model/labels.txt` when you are ready to swap off the mock detections. The detector service automatically resizes captured images to the tensor shape reported by the interpreter and normalizes RGB values to `0.0–1.0` for float models (or keeps `0–255` ints for quantized models), so ensure your exported model expects that preprocessing. Without the file, the app loads the bundled `debug_sample_detections.json` so you can still see the overlay and UI flow.
+## Setting Up the TFLite Model
+
+The app currently runs with **mock detections** for development purposes. To enable real on-device ML inference:
+
+1. **Add your TensorFlow Lite model:**
+   - Place `detector.tflite` at `app/assets/model/detector.tflite`
+   - Place `labels.txt` at `app/assets/model/labels.txt`
+   - See detailed requirements in `app/assets/model/README.md`
+
+2. **Or use the example labels:**
+   ```bash
+   cd app/assets/model
+   cp labels.txt.example labels.txt
+   # Then add your detector.tflite model
+   ```
+
+3. **Recommended starter models:**
+   - [EfficientDet-Lite0](https://tfhub.dev/tensorflow/efficientdet/lite0/detection/1)
+   - [MobileNet SSD v2](https://tfhub.dev/tensorflow/ssd_mobilenet_v2/2)
+
+The detector service automatically:
+- Resizes captured images to match your model's input tensor shape
+- Normalizes RGB values to `0.0–1.0` for float32 models
+- Keeps `0–255` values for int8/uint8 quantized models
+- Falls back to mock detections if model is unavailable
+
+**Without a model file:** The app loads `debug_sample_detections.json` so you can still develop and test the UI flow.
 
 Next, launch the app on a real device or simulator with camera support:
 

@@ -45,11 +45,17 @@ class _FocusTimerState extends State<FocusTimer> {
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_remaining <= Duration.zero) {
         timer.cancel();
+        if (!mounted) return;
         setState(() {
           _isRunning = false;
           _remaining = Duration.zero;
         });
         widget.onCompleted?.call();
+        return;
+      }
+
+      if (!mounted) {
+        timer.cancel();
         return;
       }
 

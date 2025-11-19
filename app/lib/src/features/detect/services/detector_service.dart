@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io' show File, Platform;
+import 'dart:typed_data';
 import 'dart:ui' show Rect, Size;
 
 import 'package:flutter/foundation.dart';
@@ -112,7 +113,9 @@ class DetectorService {
     }
 
     final bytes = await file.readAsBytes();
-    final decoded = img.decodeImage(bytes);
+
+    // Decode image on a separate isolate to avoid blocking UI thread
+    final decoded = await compute(_decodeImageBytes, bytes);
     final originalSize = decoded != null
         ? Size(decoded.width.toDouble(), decoded.height.toDouble())
         : Size.zero;
@@ -139,6 +142,11 @@ class DetectorService {
       stopwatch.stop();
       return _mockDetectionResult(originalSize);
     }
+  }
+
+  /// Decodes image bytes on a separate isolate to prevent UI blocking.
+  static img.Image? _decodeImageBytes(Uint8List bytes) {
+    return img.decodeImage(bytes);
   }
 
   Future<DetectionResult> _mockDetectionResult(Size originalSize) async {
