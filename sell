@@ -1,0 +1,451 @@
+#!/bin/bash
+# sell — Local selling tracker for tracking.md
+# Usage: sell <command> [args]
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+TRACKING_FILE="${SCRIPT_DIR}/tracking.md"
+TODAY=$(date +%Y-%m-%d)
+
+# Colors
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+BOLD='\033[1m'
+RESET='\033[0m'
+
+# Platform mappings (short -> section name in tracking.md)
+resolve_platform() {
+  case "$1" in
+    fb)       echo "Facebook Marketplace" ;;
+    ou)       echo "OfferUp" ;;
+    cl)       echo "Craigslist" ;;
+    reddit)   echo "Reddit" ;;
+    groups)   echo "Facebook Groups (e-bike specific)" ;;
+    *)        echo "" ;;
+  esac
+}
+
+resolve_platform_display() {
+  case "$1" in
+    fb)       echo "FB Marketplace" ;;
+    ou)       echo "OfferUp" ;;
+    cl)       echo "Craigslist" ;;
+    reddit)   echo "Reddit" ;;
+    groups)   echo "FB Groups" ;;
+    *)        echo "" ;;
+  esac
+}
+
+# Extract the price (digits) from column 2 of a standard platform table
+extract_price() {
+  local section="$1"
+  sed -n "/^### ${section}/,/^### /p" "$TRACKING_FILE" \
+    | awk -F'|' '/^\| [^|]/ && !/^\| Date/ && !/^\|---/ {
+      gsub(/^ +| +$/,"",$3)
+      gsub(/[^0-9]/,"",$3)
+      if ($3 != "") { print $3; exit }
+    }'
+}
+
+usage() {
+  cat <<EOF
+${BOLD}sell${RESET} — Local selling tracker
+
+${BOLD}Commands:${RESET}
+  status                      Show listing status summary
+  listed <platform>           Mark platform as listed today
+  drop                        Apply next price drop
+  sold <price> <platform>     Mark item as sold
+  post                        Open marketplace posting pages in browser
+  log <platform> <views> <msgs> ["notes"]  Update tracking data
+
+${BOLD}Platforms:${RESET}  fb  ou  cl  reddit  groups
+
+${BOLD}Examples:${RESET}
+  sell listed fb
+  sell log fb 142 8 "3 people interested"
+  sell drop
+  sell sold 750 fb
+  sell post
+EOF
+}
+
+# --- status ---
+cmd_status() {
+  local fb_price ou_price cl_price
+  local fb_status ou_status cl_status
+
+  fb_price=$(extract_price "Facebook Marketplace")
+  if grep -A5 '### Facebook Marketplace' "$TRACKING_FILE" | grep -q "Not yet listed"; then
+    fb_status="Not listed"
+  else
+    fb_status="Listed"
+  fi
+
+  ou_price=$(extract_price "OfferUp")
+  if grep -A5 '### OfferUp' "$TRACKING_FILE" | grep -q "Not yet listed"; then
+    ou_status="Not listed"
+  else
+    ou_status="Listed"
+  fi
+
+  cl_price=$(extract_price "Craigslist")
+  if grep -A5 '### Craigslist' "$TRACKING_FILE" | grep -q "Not yet listed"; then
+    cl_status="Not listed"
+  else
+    cl_status="Listed"
+  fi
+
+  # Reddit: check if subreddit rows still have dashes for date
+  local reddit_status
+  if sed -n '/^### Reddit$/,/^### /p' "$TRACKING_FILE" | grep -q "^| .*| — |"; then
+    reddit_status="Not listed"
+  else
+    reddit_status="Listed"
+  fi
+
+  # FB Groups: check if group rows still have dashes for date listed
+  local groups_status
+  if sed -n '/^### Facebook Groups/,/^### /p' "$TRACKING_FILE" | grep -q "^| .*| — |"; then
+    groups_status="Not listed"
+  else
+    groups_status="Listed"
+  fi
+
+  # Count price drops (rows in Price Drop Log with a real date)
+  local drop_count
+  drop_count=$(sed -n '/### Price Drop Log/,/^$/p' "$TRACKING_FILE" | grep -cE '^\| [0-9]{4}' || true)
+
+  local fb_display="" ou_display="" cl_display=""
+  [[ -n "$fb_price" ]] && fb_display=" (\$${fb_price})"
+  [[ -n "$ou_price" ]] && ou_display=" (\$${ou_price})"
+  [[ -n "$cl_price" ]] && cl_display=" (\$${cl_price})"
+
+  printf "${BOLD}Jasion X-Hunter ST E-Bike${RESET}\n"
+  printf "========================\n"
+  printf "FB Marketplace:  %s%s\n" "$fb_status" "$fb_display"
+  printf "OfferUp:         %s%s\n" "$ou_status" "$ou_display"
+  printf "Craigslist:      %s%s\n" "$cl_status" "$cl_display"
+  printf "Reddit:          %s\n" "$reddit_status"
+  printf "FB Groups:       %s\n" "$groups_status"
+  printf "Price drops:     %s of 3\n" "$drop_count"
+}
+
+# --- listed ---
+cmd_listed() {
+  local platform_key="$1"
+  local platform_name
+  platform_name=$(resolve_platform "$platform_key")
+
+  if [[ -z "$platform_name" ]]; then
+    echo -e "${RED}Unknown platform: $platform_key${RESET}"
+    echo "Valid: fb, ou, cl, reddit, groups"
+    exit 1
+  fi
+
+  local tmp_file
+  tmp_file=$(mktemp)
+
+  if [[ "$platform_key" == "reddit" ]]; then
+    # Reddit table rows: | r/sub | — | — | — |
+    # Replace dashes in date column with today's date
+    awk -v today="${TODAY}" '
+      /^### Reddit/ { in_section = 1 }
+      in_section && /^### / && $0 !~ /Reddit/ { in_section = 0 }
+      in_section && /^\| r\// {
+        gsub(/| — |/, "| " today " |")
+      }
+      { print }
+    ' "$TRACKING_FILE" > "$tmp_file"
+    mv "$tmp_file" "$TRACKING_FILE"
+
+  elif [[ "$platform_key" == "groups" ]]; then
+    # Groups table rows: | Group Name | — | — | — |
+    # Replace the date listed column (2nd data col) dashes with today
+    awk -v today="${TODAY}" '
+      /^### Facebook Groups/ { in_section = 1 }
+      in_section && /^### / && $0 !~ /Facebook Groups/ { in_section = 0 }
+      in_section && /^\| [A-Z]/ {
+        # Replace only the first " — " after the group name with today
+        sub(/ | — /, " | " today " ")
+      }
+      { print }
+    ' "$TRACKING_FILE" > "$tmp_file"
+    mv "$tmp_file" "$TRACKING_FILE"
+
+  else
+    # Standard platforms: | — | $PRICE | — | — | Not yet listed |
+    # Replace date dash with today, and "Not yet listed" with "Listed"
+    awk -v section="### ${platform_name}" -v today="${TODAY}" '
+      $0 == section { in_section = 1 }
+      in_section && /^### / && $0 != section { in_section = 0 }
+      in_section && /Not yet listed/ {
+        sub(/—/, today)
+        sub(/Not yet listed/, "Listed")
+      }
+      { print }
+    ' "$TRACKING_FILE" > "$tmp_file"
+    mv "$tmp_file" "$TRACKING_FILE"
+  fi
+
+  local display_name
+  display_name=$(resolve_platform_display "$platform_key")
+  echo -e "${GREEN}Marked ${display_name} as listed on ${TODAY}${RESET}"
+}
+
+# --- drop ---
+cmd_drop() {
+  # Price tiers (FB / OU / CL):
+  #   Tier 0 (initial/current): whatever is in tracking.md
+  #   Drop 1 -> $749 / $775 / $799
+  #   Drop 2 -> $699 / $725 / $749
+  #   Drop 3 -> $649 / $675 / $699
+
+  local fb_price ou_price cl_price
+  fb_price=$(extract_price "Facebook Marketplace")
+  ou_price=$(extract_price "OfferUp")
+  cl_price=$(extract_price "Craigslist")
+
+  # Determine new prices based on current
+  local new_fb new_ou new_cl
+  local old_fb="$fb_price" old_ou="$ou_price" old_cl="$cl_price"
+
+  if [[ "$cl_price" -gt 799 ]]; then
+    # Above Day 1 prices -> drop to Day 1
+    new_fb=749; new_ou=775; new_cl=799
+  elif [[ "$cl_price" -eq 799 ]]; then
+    # At Day 1 prices -> drop to Day 7
+    new_fb=699; new_ou=725; new_cl=749
+  elif [[ "$cl_price" -eq 749 ]]; then
+    # At Day 7 prices -> drop to Day 14
+    new_fb=649; new_ou=675; new_cl=699
+  else
+    echo -e "${YELLOW}Already at lowest price${RESET}"
+    return 0
+  fi
+
+  # Update prices in tracking.md using awk (section-aware)
+  local tmp_file
+  tmp_file=$(mktemp)
+
+  awk -v fb_old="$old_fb" -v fb_new="$new_fb" \
+      -v ou_old="$old_ou" -v ou_new="$new_ou" \
+      -v cl_old="$old_cl" -v cl_new="$new_cl" '
+    /^### Facebook Marketplace/ { section = "fb" }
+    /^### OfferUp/              { section = "ou" }
+    /^### Craigslist/           { section = "cl" }
+    /^### / && section != "" {
+      if ($0 !~ /Facebook Marketplace/ && $0 !~ /OfferUp/ && $0 !~ /Craigslist/) {
+        section = ""
+      }
+    }
+    section == "fb" { gsub("\\$" fb_old, "$" fb_new) }
+    section == "ou" { gsub("\\$" ou_old, "$" ou_new) }
+    section == "cl" { gsub("\\$" cl_old, "$" cl_new) }
+    { print }
+  ' "$TRACKING_FILE" > "$tmp_file"
+  mv "$tmp_file" "$TRACKING_FILE"
+
+  # Add entry to Price Drop Log
+  local old_summary="\$${old_fb}/\$${old_ou}/\$${old_cl}"
+  local new_summary="\$${new_fb}/\$${new_ou}/\$${new_cl}"
+  local drop_entry="| ${TODAY} | ${old_summary} | ${new_summary} | FB, OU, CL |"
+
+  tmp_file=$(mktemp)
+
+  # Check if there's a placeholder row (all dashes) to replace
+  if grep -q '^| — | — | — | — |$' "$TRACKING_FILE"; then
+    # Replace the first placeholder row
+    awk -v entry="$drop_entry" '
+      !replaced && /^| — \| — \| — \| — \|$/ {
+        print entry
+        replaced = 1
+        next
+      }
+      { print }
+    ' "$TRACKING_FILE" > "$tmp_file"
+    mv "$tmp_file" "$TRACKING_FILE"
+  else
+    # Insert after the separator line in Price Drop Log
+    awk -v entry="$drop_entry" '
+      /^| Date.*Old Price.*New Price/ { found = 1 }
+      found && /^\|---/ {
+        print
+        print entry
+        found = 0
+        next
+      }
+      { print }
+    ' "$TRACKING_FILE" > "$tmp_file"
+    mv "$tmp_file" "$TRACKING_FILE"
+  fi
+
+  echo -e "${GREEN}Price drop applied!${RESET}"
+  echo "  FB:  \$${old_fb} -> \$${new_fb}"
+  echo "  OU:  \$${old_ou} -> \$${new_ou}"
+  echo "  CL:  \$${old_cl} -> \$${new_cl}"
+  echo "  Logged in Price Drop Log"
+}
+
+# --- sold ---
+cmd_sold() {
+  local price="$1"
+  local platform_key="$2"
+  local platform_name
+  platform_name=$(resolve_platform "$platform_key")
+
+  if [[ -z "$platform_name" ]]; then
+    echo -e "${RED}Unknown platform: $platform_key${RESET}"
+    echo "Valid: fb, ou, cl, reddit, groups"
+    exit 1
+  fi
+
+  local display_name
+  display_name=$(resolve_platform_display "$platform_key")
+
+  local sold_entry="| Jasion X-Hunter ST | \$${price} | ${display_name} | ${TODAY} | — |"
+  local tmp_file
+  tmp_file=$(mktemp)
+
+  # Check for placeholder row in Sold Log (5 dash columns)
+  if grep -q '^| — | — | — | — | — |$' "$TRACKING_FILE"; then
+    awk -v entry="$sold_entry" '
+      !replaced && /^| — \| — \| — \| — \| — \|$/ {
+        print entry
+        replaced = 1
+        next
+      }
+      { print }
+    ' "$TRACKING_FILE" > "$tmp_file"
+    mv "$tmp_file" "$TRACKING_FILE"
+  else
+    # Insert after separator in Sold Log
+    awk -v entry="$sold_entry" '
+      /^## Sold Log/ { found = 1 }
+      found && /^\|---/ {
+        print
+        print entry
+        found = 0
+        next
+      }
+      { print }
+    ' "$TRACKING_FILE" > "$tmp_file"
+    mv "$tmp_file" "$TRACKING_FILE"
+  fi
+
+  echo -e "${GREEN}Marked as sold! \$${price} via ${display_name} on ${TODAY}${RESET}"
+  echo -e "${YELLOW}Don't forget to delete listings from other platforms${RESET}"
+}
+
+# --- post ---
+cmd_post() {
+  local count=0
+
+  open "https://www.facebook.com/marketplace/create/item" 2>/dev/null && count=$((count + 1))
+  open "https://post.craigslist.org/" 2>/dev/null && count=$((count + 1))
+  open "https://www.reddit.com/r/ebikes/submit" 2>/dev/null && count=$((count + 1))
+  open "https://www.reddit.com/r/BikeLA/submit" 2>/dev/null && count=$((count + 1))
+
+  echo -e "${GREEN}Opened ${count} marketplace tabs in your browser.${RESET}"
+  echo -e "Listing files are in ${BOLD}./listings/${RESET}"
+}
+
+# --- log ---
+cmd_log() {
+  local platform_key="$1"
+  local views="$2"
+  local messages="$3"
+  local notes="${4:-}"
+  local platform_name
+  platform_name=$(resolve_platform "$platform_key")
+
+  if [[ -z "$platform_name" ]]; then
+    echo -e "${RED}Unknown platform: $platform_key${RESET}"
+    echo "Valid: fb, ou, cl, reddit, groups"
+    exit 1
+  fi
+
+  if [[ "$platform_key" == "reddit" ]] || [[ "$platform_key" == "groups" ]]; then
+    echo -e "${YELLOW}Log for ${platform_name} uses a different table format.${RESET}"
+    echo "Edit tracking.md directly for Reddit/FB Groups tracking."
+    exit 0
+  fi
+
+  local section_header="### ${platform_name}"
+  local tmp_file
+  tmp_file=$(mktemp)
+
+  # Find the last data row in the platform section and update views/messages/notes
+  awk -v section="$section_header" -v views="$views" -v msgs="$messages" -v notes="$notes" '
+    $0 == section { in_section = 1 }
+    in_section && /^### / && $0 != section { in_section = 0 }
+    in_section && /^\| [^|]/ && !/^\| Date/ && !/^\|---/ {
+      last_data = NR
+    }
+    { lines[NR] = $0 }
+    END {
+      for (i = 1; i <= NR; i++) {
+        if (i == last_data) {
+          n = split(lines[i], f, "|")
+          if (n >= 6) {
+            # f[2]=date, f[3]=price (keep), f[4]=views, f[5]=messages, f[6]=notes
+            print "|" f[2] "|" f[3] "| " views " | " msgs " | " notes " |"
+          } else {
+            print lines[i]
+          }
+        } else {
+          print lines[i]
+        }
+      }
+    }
+  ' "$TRACKING_FILE" > "$tmp_file"
+  mv "$tmp_file" "$TRACKING_FILE"
+
+  local display_name
+  display_name=$(resolve_platform_display "$platform_key")
+  echo -e "${GREEN}Updated ${display_name}: ${views} views, ${messages} messages${RESET}"
+  [[ -n "$notes" ]] && echo "  Notes: ${notes}"
+}
+
+# --- Main ---
+if [[ $# -lt 1 ]]; then
+  usage
+  exit 0
+fi
+
+COMMAND="$1"
+shift
+
+case "$COMMAND" in
+  status)
+    cmd_status
+    ;;
+  listed)
+    [[ $# -lt 1 ]] && { echo -e "${RED}Usage: sell listed <platform>${RESET}"; exit 1; }
+    cmd_listed "$1"
+    ;;
+  drop)
+    cmd_drop
+    ;;
+  sold)
+    [[ $# -lt 2 ]] && { echo -e "${RED}Usage: sell sold <price> <platform>${RESET}"; exit 1; }
+    cmd_sold "$1" "$2"
+    ;;
+  post)
+    cmd_post
+    ;;
+  log)
+    [[ $# -lt 3 ]] && { echo -e "${RED}Usage: sell log <platform> <views> <messages> [\"notes\"]${RESET}"; exit 1; }
+    cmd_log "$1" "$2" "$3" "${4:-}"
+    ;;
+  help|--help|-h)
+    usage
+    ;;
+  *)
+    echo -e "${RED}Unknown command: ${COMMAND}${RESET}"
+    usage
+    exit 1
+    ;;
+esac

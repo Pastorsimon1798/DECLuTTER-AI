@@ -1,43 +1,47 @@
 # Jasion X-Hunter ST — Listing
 
 > **Status:** Ready to post (take photos and list)
+> **Last updated:** April 2026 — prices revised due to Jasion coupon competition
+
+---
+
+## Pricing Note (April 2026)
+
+Jasion has active coupon codes (EASTER50, SPRINGRIDE) bringing a NEW X-Hunter ST to $849.
+Our prices stay clearly below that. The $120+ accessories bundle justifies our pricing.
+Do NOT reference the $1,899 MSRP — it's fake. Real retail is $899.
 
 ---
 
 ## Platform-Specific Listings
 
-### Facebook Marketplace ($775)
+### Facebook Marketplace ($749)
 
-**Title:** Jasion X-Hunter ST E-Bike — BRAND NEW / Unused — Long Beach
+**Title:** Jasion X-Hunter ST 750W Fat Tire E-Bike — BRAND NEW — Long Beach
 
 **Category:** Sporting Goods > Bicycles > Electric Bikes
 
 **Condition:** New
 
-**Price:** $775
+**Price:** $749
 
 **Description:**
 
 ```
-Brand new Jasion X-Hunter ST e-bike — never ridden outdoors.
+Brand new Jasion X-Hunter ST e-bike — never ridden outdoors. Zero miles.
 
-Specs:
-- Motor: 750W brushless (1,400W peak)
-- Battery: 48V 13Ah (556Wh)
-- Range: up to 71 miles per charge
-- Top speed: 30+ mph
-- Torque: 85 Nm
-- Wheel size: 20" x 4" fat tires
-- Full suspension (front hydraulic fork + 4-link rear shock)
-- Foldable step-through frame
-- Max payload: 480 lbs
-- 5 pedal assist levels + twist throttle
-- Hydraulic disc brakes
-- IPX6 waterproof rating
+Retail: $899 + tax = $975 out the door. Yours for $749 cash, no tax. That's $225+ saved on a brand new bike with $120+ in accessories included.
 
-Condition: Brand new, unused. Purchased December 2025 and never ridden outside. Battery fully charged and ready to go. No scratches, no wear. Still has original packaging.
+750W motor (1,400W peak) — hills are no problem, twist throttle means no pedaling needed. 85 Nm torque gets you moving fast.
+48V 13Ah battery with up to 71 miles of range — that's a full week of commuting on one charge.
+Top speed: 30+ mph. 20"x4" fat tires for stability on any surface.
+Full suspension: front hydraulic fork + 4-link rear shock — absorbs every bump.
+Foldable step-through frame — easy to store, easy to hop on.
+Hydraulic disc brakes. IPX6 waterproof. 480 lb payload capacity.
 
-Accessories included:
+Condition: Brand new, never ridden outdoors. Purchased December 2025. Odometer reads 0.0 miles. Battery has zero discharge cycles, stored at recommended 60% charge. No scratches, no wear. Still has original packaging.
+
+Accessories included (over $120 value):
 - Charger
 - Fenders
 - Lock
@@ -45,80 +49,84 @@ Accessories included:
 - Helmet
 - Mirror
 
-Color: Green.
+Color: Aqua Green.
 
-Original retail: $899. Selling for $775 — you save $124+ on a brand new bike.
+Meet at Long Beach Police Station safe exchange zone (4300 Long Beach Blvd). Test rides welcome — I'll hold your keys during the ride. Cash, Zelle, or Venmo. Local pickup — Long Beach, CA.
 
-Cash, Zelle, or Venmo. Local pickup only — Long Beach, CA. No shipping.
-
-Keywords: e-bike, electric bike, Long Beach, Jasion, X-Hunter ST, ebike, folding bike, fat tire bike, commuter bike, full suspension
+Keywords: e-bike, electric bike, ebike, Long Beach, Jasion, X-Hunter ST, 750W, fat tire, folding bike, commuter bike, full suspension, delivery bike, Doordash, step-through
 ```
 
 **Photos needed (12):**
-1. [ ] Left side — full bike, clean background
-2. [ ] Right side — full bike (folded position too)
-3. [ ] Front — show display, headlights
-4. [ ] Rear — show taillight, battery
-5. [ ] Motor close-up (rear hub)
-6. [ ] Battery close-up (show it's clean/new)
-7. [ ] Display powered on (show mileage = 0 or near 0)
-8. [ ] Charger + all accessories laid out
-9. [ ] Tire close-up (show 20x4 fat tire tread is new)
-10. [ ] Brake close-up (hydraulic disc)
-11. [ ] Frame sticker/serial number
-12. [ ] Suspension close-up (front fork + rear shock)
+1. [ ] Left side 3/4 angle — hero shot (THUMBNAIL)
+2. [ ] Display powered on — show 0.0 miles (TRUST BUILDER)
+3. [ ] Right side 3/4 angle
+4. [ ] Front view — display, headlight
+5. [ ] Rear view — motor hub, taillight
+6. [ ] Motor close-up (show 750W stamp)
+7. [ ] Battery removed — clean terminals
+8. [ ] Tire close-up — unworn tread
+9. [ ] Suspension close-up — front fork + rear shock
+10. [ ] Bike folded — show compact storage
+11. [ ] All accessories laid out (charger, fenders, lock, manual, helmet, mirror)
+12. [ ] Brake close-up — hydraulic disc caliper
 
 ---
 
-### OfferUp ($799)
+### OfferUp ($775)
 
-**Title:** Jasion X-Hunter ST E-Bike Brand New Long Beach
+**Title:** BRAND NEW Jasion X-Hunter ST 750W Electric Bike Long Beach
 
-**Description:** (Same as FB Marketplace above, minus the keywords line)
+**Description:** (Same as FB Marketplace above, minus the keywords line at bottom)
 
 **Photos:** Same 12 photos (OfferUp allows up to 12)
 
 ---
 
-### Craigslist ($849)
+### Craigslist ($799)
 
-**Title:** Jasion X-Hunter ST Electric Bike - Brand New/Unused - Long Beach
+**Title:** Jasion X-Hunter ST 750W Full Suspension E-Bike - BRAND NEW - Long Beach $799
 
 **Description:**
 
 ```
-Brand new Jasion X-Hunter ST e-bike — never ridden outdoors.
+Brand new Jasion X-Hunter ST e-bike — zero miles, never ridden outdoors.
+
+Retail $899 + tax. Selling for $799 with $120+ in accessories included.
 
 750W motor (1400W peak) | 48V 13Ah battery | 71 mi range | 30+ mph
-Full suspension | 20x4 fat tires | Foldable | 480 lb capacity
+Full suspension | 20x4 fat tires | Foldable step-through | 480 lb capacity
 
 This is the step-through (ST) model — easy to hop on and off. Full suspension front and rear with hydraulic disc brakes. IPX6 waterproof. 5 pedal assist levels plus twist throttle.
 
-Condition: Brand new, unused. Original retail $899. Selling for $849.
+Brand new, unused. Odometer reads 0.0 miles. Battery has zero discharge cycles. Original packaging included.
 
-Accessories: Charger, fenders, lock, manual, helmet, mirror.
+Accessories included: Charger, fenders, lock, manual, helmet, mirror ($120+ value).
 
-Cash only at pickup. Long Beach, CA. No shipping.
+Meet at Long Beach Police Station safe exchange zone. Test rides welcome. Cash only at pickup. Long Beach, CA.
 ```
 
 ---
 
 ### Reddit — r/ebikes
 
-**Title:** [FS] [Long Beach, CA] Brand New Jasion X-Hunter ST E-Bike — $775
+**Title:** [FS] [Long Beach, CA] Brand New Jasion X-Hunter ST E-Bike — $749
 
 ```
 **Location:** Long Beach, CA (local pickup only)
 
-**Price:** $775 (OBO)
+**Price:** $749 (OBO)
 
-**Item:** Brand new Jasion X-Hunter ST e-bike. Never ridden outdoors. Purchased December 2025.
+**Item:** Brand new Jasion X-Hunter ST e-bike. Zero miles. Never ridden outdoors. Purchased December 2025.
 
-Specs: 750W motor (1400W peak), 48V 13Ah battery, up to 71 mile range, 30+ mph top speed, 85 Nm torque. Full suspension (front hydraulic fork + 4-link rear shock), 20x4 fat tires, foldable step-through frame, hydraulic disc brakes, IPX6 waterproof.
+Specs: 750W motor (1400W peak), 48V 13Ah battery, up to 71 mile range, 30+ mph top speed, 85 Nm torque. Full suspension (front hydraulic fork + 4-link rear shock), 20x4 fat tires, foldable step-through frame, hydraulic disc brakes, IPX6 waterproof. 480 lb payload.
 
-Accessories included: Charger, fenders, lock, manual, helmet, mirror.
+Accessories included: Charger, fenders, lock, manual, helmet, mirror (over $120 value).
 
-Happy to meet at a police station safe exchange zone. Cash, Zelle, or Venmo.
+Battery has zero discharge cycles, stored at recommended 60% charge. Odometer reads 0.0 miles.
+
+Happy to meet at a police station safe exchange zone. Test rides welcome. Cash, Zelle, or Venmo.
+
+Imgur album: [link after uploading photos]
 ```
 
 **Photo hosting:** Upload to imgur.com, create an album, link in post
@@ -127,7 +135,7 @@ Happy to meet at a police station safe exchange zone. Cash, Zelle, or Venmo.
 
 ### Reddit — r/BikeLA
 
-**Title:** [FS - Long Beach] Brand New Jasion X-Hunter ST E-Bike — $775
+**Title:** [FS - Long Beach] Brand New Jasion X-Hunter ST E-Bike — $749
 
 (Same body as r/ebikes post)
 
@@ -137,7 +145,7 @@ Happy to meet at a police station safe exchange zone. Cash, Zelle, or Venmo.
 
 Post to each group with:
 
-**Title:** [FS] Jasion X-Hunter ST E-Bike — Brand New — Long Beach $775
+**Title:** [FS] Jasion X-Hunter ST 750W E-Bike — Brand New — Long Beach $749
 
 **Body:** (Same as FB Marketplace description)
 
@@ -149,14 +157,27 @@ Post to each group with:
 
 ---
 
+## Staggered Posting Schedule
+
+| Day | Time | Platform | Why |
+|-----|------|----------|-----|
+| Tuesday | 10:00 AM | FB Marketplace | Mid-week browsing peak, largest buyer pool |
+| Wednesday | 11:00 AM | OfferUp | Peak buyer activity day |
+| Friday | 8:00 AM | Craigslist | Weekend planning window |
+| Saturday | 9:00 AM | Reddit + FB Groups | Community engagement peak |
+
+---
+
 ## Before Posting Checklist
 
-- [ ] Model confirmed: X-Hunter ST
+- [ ] Model confirmed: X-Hunter ST (step-through, Aqua Green)
 - [ ] Specs verified against jasionbike.com
-- [ ] 12 photos taken (clean item, good lighting, near a window)
-- [ ] Battery fully charged (for display photo)
+- [ ] 12 photos taken (follow photo-guide.md)
+- [ ] Battery charged for display photo (show 0.0 miles)
+- [ ] Bike wiped down and clean
 - [ ] Accessories confirmed (charger, fenders, lock, manual, helmet, mirror)
-- [ ] Price confirmed against current FB Marketplace listings
+- [ ] All accessories clean and laid out for photo #11
 - [ ] FB native auto-reply enabled
-- [ ] PopPublic extension installed
-- [ ] FB Marketplace Relister extension installed
+- [ ] PopPublic extension installed and configured
+- [ ] FB Marketplace Relister extension installed (set to 4-day cycle)
+- [ ] Post on schedule (don't post all platforms same day)

@@ -9,17 +9,17 @@ Tracks where each item is listed, buyer interest, and price history.
 ### Facebook Marketplace
 | Date | Price | Views | Messages | Notes |
 |------|-------|-------|----------|-------|
-| — | $775 | — | — | Not yet listed |
+| — | $749 | — | — | Not yet listed |
 
 ### OfferUp
 | Date | Price | Views | Messages | Notes |
 |------|-------|-------|----------|-------|
-| — | $799 | — | — | Not yet listed |
+| — | $775 | — | — | Not yet listed |
 
 ### Craigslist
 | Date | Price | Views | Messages | Notes |
 |------|-------|-------|----------|-------|
-| — | $849 | — | — | Not yet listed |
+| — | $799 | — | — | Not yet listed |
 
 ### Facebook Groups (e-bike specific)
 | Group | Date Listed | Price | Responses |

@@ -2,7 +2,7 @@
 
 ## Jasion E-Bike — Market Data
 
-### Current Market Prices (March 2026)
+### Current Market Prices (April 2026 — UPDATED)
 
 | Source | Condition | Price Range | Notes |
 |--------|-----------|-------------|-------|
@@ -32,19 +32,31 @@
 | Waterproof | IPX6 |
 | Colors | Electric Blue, Beast Brown, Green |
 | Current retail (jasionbike.com) | $899 (sale price, reg $1,899) |
+| **Active coupons (Apr 2026)** | **EASTER50, SPRINGRIDE — $50 off = $849 new** |
+| **Jasion EB7 2.0 (competitor)** | ~$699 new |
+| **Jasion EB5 Roamer ST (competitor)** | ~$599 new |
+| **Hunter Pro (upgrade model)** | $1,099 new, 1000W motor |
 
-### Pricing Strategy for X-Hunter ST (Brand New)
+### Pricing Strategy for X-Hunter ST (Brand New) — REVISED APRIL 2026
 
-Current retail is $899 on sale at jasionbike.com (listed at $1,899 "regular" but always on sale).
+**CRITICAL: Jasion has active coupon codes (EASTER50, SPRINGRIDE) bringing a NEW X-Hunter ST to $849.**
+Our Craigslist price must be BELOW this. The $1,899 MSRP is fake — always has been. Don't reference it.
+
+The accessories bundle (helmet $50, lock $25, mirror $15, fenders $30) = ~$120 value add.
+This is what justifies pricing near the coupon-available new price.
 
 | Scenario | Price | Expected Sale Time |
 |----------|-------|-------------------|
-| Quick sale | $700-725 | 1-3 days |
-| Sweet spot | $750-775 | 3-7 days |
-| Patient | $775-849 | 7-14 days |
-| Fire sale | $600-650 | Within 24 hours |
+| Quick sale | $699 | 1-3 days |
+| Sweet spot | $749 | 3-7 days |
+| Patient | $775-799 | 7-14 days |
+| Fire sale | $599-649 | Within 24 hours |
 
-**Recommendation:** Start at $775 on FB, $799 on OfferUp, $849 on Craigslist. The X-Hunter ST is a popular model with strong reviews — the 1,400W peak motor and full suspension are key selling points. Being brand new and unused is a big advantage over used listings.
+**Revised recommendation:** Start at $749 on FB, $775 on OfferUp, $799 on Craigslist.
+- $749 is clearly below $849 coupon price on FB (biggest buyer pool)
+- $799 on CL gives negotiation room down to $749
+- Emphasize "over $120 in accessories included" in every listing
+- If buyer mentions coupons, counter with: "Accessories bundle adds $120+ value, and mine has zero wait time"
 
 ### Comparable Listings to Check
 

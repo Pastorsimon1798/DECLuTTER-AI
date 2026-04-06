@@ -6,7 +6,7 @@ Local selling workspace for unused items. All items are local pickup only (Long 
 
 | Item | Platform(s) | Price | Status |
 |------|------------|-------|--------|
-| Jasion X-Hunter ST | FB Marketplace, OfferUp, Craigslist, Reddit, FB groups | $775-849 | Pending listing |
+| Jasion X-Hunter ST | FB Marketplace, OfferUp, Craigslist, Reddit, FB groups | $749-799 | Pending listing |
 | [Electronics TBD] | FB Marketplace, OfferUp, Craigslist | TBD | Pending listing |
 
 ## Workspace Structure
