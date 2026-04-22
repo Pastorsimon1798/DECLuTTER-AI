@@ -35,6 +35,7 @@ def _clear_auth_env() -> None:
     ]:
         os.environ.pop(key, None)
     dependencies.get_firebase_verifier.cache_clear()
+    analysis.get_analysis_adapter.cache_clear()
 
 
 def _clear_readiness_env() -> None:
@@ -64,6 +65,7 @@ def _clear_readiness_env() -> None:
         'EBAY_CLIENT_SECRET',
     ]:
         os.environ.pop(key, None)
+    analysis.get_analysis_adapter.cache_clear()
 
 
 def _build_jpeg_with_exif() -> bytes:
@@ -73,12 +75,32 @@ def _build_jpeg_with_exif() -> bytes:
     return buffer.getvalue()
 
 
+def _clear_analysis_env() -> None:
+    for key in [
+        'DECLUTTER_ANALYSIS_PROVIDER',
+        'DECLUTTER_INFERENCE_API_KEY',
+        'DECLUTTER_INFERENCE_BASE_URL',
+        'DECLUTTER_INFERENCE_MODEL',
+        'DECLUTTER_INFERENCE_TIMEOUT_SECONDS',
+        'OPENAI_BASE_URL',
+        'OPENAI_MODEL',
+        'LMSTUDIO_BASE_URL',
+        'LMSTUDIO_MODEL',
+        'LM_STUDIO_BASE_URL',
+        'LM_STUDIO_MODEL',
+    ]:
+        os.environ.pop(key, None)
+    analysis.get_analysis_adapter.cache_clear()
+
+
 def _set_auth_mode(mode: str) -> None:
+    _clear_analysis_env()
     os.environ['DECLUTTER_AUTH_MODE'] = mode
     if mode == 'scaffold':
         os.environ['DECLUTTER_TEST_ID_TOKEN'] = 'test-user-token'
         os.environ['DECLUTTER_TEST_APP_CHECK_TOKEN'] = 'test-app-check-token'
     dependencies.get_firebase_verifier.cache_clear()
+    analysis.get_analysis_adapter.cache_clear()
 
 
 def test_health() -> None:
@@ -316,6 +338,38 @@ def test_analysis_rejects_wrong_self_hosted_shared_token() -> None:
     assert response.json()['detail'] == 'Invalid shared access token.'
 
 
+def test_bad_home_inference_config_does_not_break_health() -> None:
+    _clear_readiness_env()
+    os.environ['DECLUTTER_ANALYSIS_PROVIDER'] = 'lmstudio'
+    os.environ.pop('DECLUTTER_INFERENCE_MODEL', None)
+    os.environ.pop('LMSTUDIO_MODEL', None)
+    analysis.get_analysis_adapter.cache_clear()
+
+    response = client.get('/health/readiness')
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body['checks']['home_inference_configured'] is False
+
+
+def test_bad_home_inference_config_returns_controlled_503() -> None:
+    _set_auth_mode('shared_token')
+    os.environ['DECLUTTER_SHARED_ACCESS_TOKEN'] = 'self-hosted-secret'
+    os.environ['DECLUTTER_ANALYSIS_PROVIDER'] = 'lmstudio'
+    os.environ.pop('DECLUTTER_INFERENCE_MODEL', None)
+    os.environ.pop('LMSTUDIO_MODEL', None)
+    analysis.get_analysis_adapter.cache_clear()
+
+    response = client.post(
+        '/analysis/run',
+        json={'session_id': 's-1', 'image_storage_key': 'private/key.jpg'},
+        headers=SHARED_TOKEN_HEADERS,
+    )
+
+    assert response.status_code == 503
+    assert 'required for OpenAI-compatible analysis' in response.json()['detail']
+
+
 def test_openai_compatible_analysis_adapter_parses_structured_items(
     tmp_path: Path,
 ) -> None:
@@ -376,6 +430,21 @@ def test_openai_compatible_analysis_adapter_parses_structured_items(
     assert request_payload['model'] == 'local-vision-model'
     user_content = request_payload['messages'][1]['content']  # type: ignore[index]
     assert user_content[1]['image_url']['url'].startswith('data:image/jpeg;base64,')
+
+
+def test_openai_compatible_analysis_adapter_rejects_empty_choices() -> None:
+    adapter = OpenAICompatibleAnalysisAdapter(
+        base_url='http://host.docker.internal:1234/v1',
+        model='local-vision-model',
+        transport=lambda _url, _payload, _headers, _timeout: {'choices': []},
+    )
+
+    try:
+        adapter.run('intake/missing.jpg')
+    except RuntimeError as exc:
+        assert str(exc) == 'Inference provider returned no choices.'
+    else:
+        raise AssertionError('empty choices should raise RuntimeError')
 
 
 def test_intake_strips_exif_and_stores_file(tmp_path: Path) -> None:

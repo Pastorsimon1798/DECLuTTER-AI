@@ -8,7 +8,11 @@ from schemas.analysis import (
     ImageIntakeResponse,
     IntakeSessionResponse,
 )
-from services.analysis_adapter import create_analysis_adapter_from_env
+from services.analysis_adapter import (
+    MockStructuredAnalysisAdapter,
+    OpenAICompatibleAnalysisAdapter,
+    create_analysis_adapter_from_env,
+)
 from services.image_intake import ImageIntakeService
 from services.storage_adapter import (
     LocalSignedUploadAdapter,
@@ -27,7 +31,13 @@ def get_image_intake_service() -> ImageIntakeService:
     return build_image_intake_service()
 
 
-analysis_adapter = create_analysis_adapter_from_env()
+@lru_cache(maxsize=1)
+def get_analysis_adapter() -> (
+    MockStructuredAnalysisAdapter | OpenAICompatibleAnalysisAdapter
+):
+    return create_analysis_adapter_from_env()
+
+
 upload_adapter = LocalSignedUploadAdapter()
 
 
@@ -49,6 +59,7 @@ async def intake_image(
 @router.post("/run", response_model=AnalysisResponse)
 def run_analysis(payload: AnalysisRequest) -> AnalysisResponse:
     try:
+        analysis_adapter = get_analysis_adapter()
         result = analysis_adapter.run(payload.image_storage_key)
     except RuntimeError as exc:
         raise HTTPException(

@@ -172,7 +172,19 @@ class OpenAICompatibleAnalysisAdapter:
 
     @staticmethod
     def _parse_items(response: dict[str, Any]) -> list[DetectedItem]:
-        content = response.get("choices", [{}])[0].get("message", {}).get("content")
+        choices = response.get("choices")
+        if not isinstance(choices, list) or not choices:
+            raise RuntimeError("Inference provider returned no choices.")
+
+        first_choice = choices[0]
+        if not isinstance(first_choice, dict):
+            raise RuntimeError("Inference provider returned an invalid choice.")
+
+        message = first_choice.get("message")
+        if not isinstance(message, dict):
+            raise RuntimeError("Inference provider returned no message.")
+
+        content = message.get("content")
         if not isinstance(content, str):
             raise RuntimeError("Inference provider returned no message content.")
 
