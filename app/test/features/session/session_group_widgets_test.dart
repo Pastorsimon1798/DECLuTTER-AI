@@ -204,6 +204,11 @@ void main() {
               moneyOnTableLowUsd: 12,
               moneyOnTableHighUsd: 30,
               groupedResult: buildGroupedResult(groups),
+              publicListingUrlsByGroupId: const {
+                'group_1': 'https://api.example.com/public/listings/pub_1',
+              },
+              creatingListingPageGroupIds: const {},
+              onCreateListingPage: _noop,
               remoteItemsByGroupId: const {
                 'group_1': CashToClearItemDto(
                   itemId: 'item_1',
@@ -229,6 +234,53 @@ void main() {
       expect(find.text('Money on the table'), findsOneWidget);
       expect(find.text(r'$12–30'), findsOneWidget);
       expect(find.textContaining('Books: \$12–30'), findsOneWidget);
+      expect(find.text('Page created for Books'), findsOneWidget);
+      expect(find.text('https://api.example.com/public/listings/pub_1'), findsOneWidget);
+    });
+
+    testWidgets('disables create page action while a group is already creating', (tester) async {
+      final groups = [
+        buildGroup(id: 'group_1', label: 'books', count: 2),
+      ];
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Material(
+            child: CashToClearStatusCard(
+              isSyncing: true,
+              message: 'Creating standalone listing page...',
+              moneyOnTableLowUsd: 12,
+              moneyOnTableHighUsd: 30,
+              groupedResult: buildGroupedResult(groups),
+              publicListingUrlsByGroupId: const {},
+              creatingListingPageGroupIds: const {'group_1'},
+              onCreateListingPage: _noop,
+              remoteItemsByGroupId: const {
+                'group_1': CashToClearItemDto(
+                  itemId: 'item_1',
+                  label: 'books',
+                  valuation: CashToClearValuationDto(
+                    lowUsd: 12,
+                    highUsd: 30,
+                    confidence: 'medium',
+                    source: 'mock-ebay-comps',
+                  ),
+                  listingDraft: CashToClearListingDraftDto(
+                    title: 'Books - Unknown',
+                    priceUsd: 21,
+                    categoryHint: 'Books & Magazines',
+                  ),
+                ),
+              },
+            ),
+          ),
+        ),
+      );
+
+      final button = tester.widget<OutlinedButton>(
+        find.widgetWithText(OutlinedButton, 'Creating page...'),
+      );
+      expect(button.onPressed, isNull);
     });
   });
 }

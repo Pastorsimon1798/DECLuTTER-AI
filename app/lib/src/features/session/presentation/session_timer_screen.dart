@@ -31,6 +31,8 @@ class SessionTimerScreen extends StatefulWidget {
 class _SessionTimerScreenState extends State<SessionTimerScreen> {
   final List<SessionDecision> _decisions = [];
   final Map<String, CashToClearItemDto> _remoteItemsByGroupId = {};
+  final Map<String, String> _publicListingUrlsByGroupId = {};
+  final Set<String> _creatingListingPageGroupIds = {};
   final List<_PendingRemoteDecision> _pendingRemoteDecisions = [];
   String? _selectedGroupId;
   late final CashToClearApiClient _cashToClearApi;
@@ -266,6 +268,45 @@ class _SessionTimerScreenState extends State<SessionTimerScreen> {
     );
   }
 
+  Future<void> _createPublicListingPage(String groupId) async {
+    final sessionId = _remoteSessionId;
+    final remoteItem = _remoteItemsByGroupId[groupId];
+    if (!_cashToClearApi.isConfigured || sessionId == null || remoteItem == null) {
+      setState(() {
+        _cashToClearSyncMessage = 'Sync Cash-to-Clear values before creating a page.';
+      });
+      return;
+    }
+
+    setState(() {
+      _isSyncingCashToClear = true;
+      _creatingListingPageGroupIds.add(groupId);
+      _cashToClearSyncMessage = 'Creating standalone listing page...';
+    });
+
+    try {
+      final listing = await _cashToClearApi.createPublicListing(
+        sessionId: sessionId,
+        itemId: remoteItem.itemId,
+      );
+      if (!mounted) return;
+      setState(() {
+        _publicListingUrlsByGroupId[groupId] = listing.publicUrl;
+        _creatingListingPageGroupIds.remove(groupId);
+        _isSyncingCashToClear = false;
+        _cashToClearSyncMessage = 'Standalone listing page created.';
+      });
+    } catch (error) {
+      debugPrint('Cash-to-Clear public listing creation failed: $error');
+      if (!mounted) return;
+      setState(() {
+        _creatingListingPageGroupIds.remove(groupId);
+        _isSyncingCashToClear = false;
+        _cashToClearSyncMessage = 'Could not create listing page. Please try again.';
+      });
+    }
+  }
+
   void _handleTimerCompleted() {
     if (!mounted) return;
     showModalBottomSheet(
@@ -299,7 +340,10 @@ class _SessionTimerScreenState extends State<SessionTimerScreen> {
               moneyOnTableLowUsd: _moneyOnTableLowUsd,
               moneyOnTableHighUsd: _moneyOnTableHighUsd,
               remoteItemsByGroupId: _remoteItemsByGroupId,
+              publicListingUrlsByGroupId: _publicListingUrlsByGroupId,
+              creatingListingPageGroupIds: _creatingListingPageGroupIds,
               groupedResult: widget.groupedResult,
+              onCreateListingPage: _createPublicListingPage,
             ),
             const SizedBox(height: 24),
             FocusTimer(onCompleted: _handleTimerCompleted),
@@ -403,7 +447,10 @@ class CashToClearStatusCard extends StatelessWidget {
     required this.moneyOnTableLowUsd,
     required this.moneyOnTableHighUsd,
     required this.remoteItemsByGroupId,
+    required this.publicListingUrlsByGroupId,
+    required this.creatingListingPageGroupIds,
     required this.groupedResult,
+    required this.onCreateListingPage,
   });
 
   final bool isSyncing;
@@ -411,7 +458,10 @@ class CashToClearStatusCard extends StatelessWidget {
   final double? moneyOnTableLowUsd;
   final double? moneyOnTableHighUsd;
   final Map<String, CashToClearItemDto> remoteItemsByGroupId;
+  final Map<String, String> publicListingUrlsByGroupId;
+  final Set<String> creatingListingPageGroupIds;
   final GroupedDetectionResult groupedResult;
+  final ValueChanged<String> onCreateListingPage;
 
   @override
   Widget build(BuildContext context) {
@@ -485,6 +535,46 @@ class CashToClearStatusCard extends StatelessWidget {
                   );
                 }).toList(),
               ),
+              const SizedBox(height: 12),
+              ...groupedResult.groups.map((group) {
+                final item = remoteItemsByGroupId[group.id];
+                if (item == null) {
+                  return const SizedBox.shrink();
+                }
+                final publicUrl = publicListingUrlsByGroupId[group.id];
+                final isCreating = creatingListingPageGroupIds.contains(group.id);
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: isCreating || publicUrl != null
+                            ? null
+                            : () => onCreateListingPage(group.id),
+                        icon: Icon(isCreating ? Icons.hourglass_empty : Icons.public),
+                        label: Text(
+                          isCreating
+                              ? 'Creating page...'
+                              : publicUrl == null
+                                  ? 'Create page for ${group.displayLabel}'
+                                  : 'Page created for ${group.displayLabel}',
+                        ),
+                      ),
+                      if (publicUrl != null) ...[
+                        const SizedBox(height: 4),
+                        SelectableText(
+                          publicUrl,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSecondaryContainer,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                );
+              }),
             ],
           ],
         ),

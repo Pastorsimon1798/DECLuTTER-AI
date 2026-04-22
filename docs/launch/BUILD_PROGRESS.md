@@ -28,6 +28,7 @@ This file tracks implementation progress against `DECLUTTER_AI_2026_LAUNCH_PLAN_
 - ✅ Cash-to-Clear product loop starter: durable sessions, items, decisions, valuations, listing drafts, and money-on-the-table totals.
 - ✅ Flutter Cash-to-Clear client starter: sprint UI can sync backend sessions, group valuations, decisions, and Money-on-the-Table totals when configured.
 - ✅ Standalone listing fallback: users can generate public HTML listing pages without eBay or marketplace publishing.
+- ✅ Flutter standalone listing page starter: synced sprint groups can request and display public listing-page links.
 
 ## Next implementation steps
 

@@ -80,7 +80,7 @@ flutter run \
   --dart-define=DECLUTTER_APP_CHECK_TOKEN=<app-check-token>
 ```
 
-If those values are omitted, the app keeps the existing local-only sprint flow.
+If those values are omitted, the app keeps the existing local-only sprint flow. When configured, synced groups can also generate standalone listing page links for users who do not want to use marketplaces.
 
 ## What works today
 

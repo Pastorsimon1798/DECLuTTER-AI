@@ -90,6 +90,17 @@ class CashToClearApiClient {
     return CashToClearDecisionDto.fromJson(response);
   }
 
+  Future<CashToClearPublicListingDto> createPublicListing({
+    required String sessionId,
+    required String itemId,
+  }) async {
+    final response = await _requestJson(
+      method: 'POST',
+      path: '/sessions/$sessionId/items/$itemId/public-listing',
+    );
+    return CashToClearPublicListingDto.fromJson(response, baseUrl: baseUrl);
+  }
+
   Future<CashToClearSessionDto> getSession(String sessionId) async {
     final response = await _requestJson(method: 'GET', path: '/sessions/$sessionId');
     return CashToClearSessionDto.fromJson(response);
@@ -254,6 +265,30 @@ class CashToClearDecisionDto {
 
   final String itemId;
   final String decision;
+}
+
+class CashToClearPublicListingDto {
+  const CashToClearPublicListingDto({
+    required this.listingId,
+    required this.publicUrl,
+    required this.title,
+  });
+
+  factory CashToClearPublicListingDto.fromJson(
+    Map<String, dynamic> json, {
+    required String baseUrl,
+  }) {
+    final rawUrl = json['public_url'] as String? ?? '';
+    return CashToClearPublicListingDto(
+      listingId: json['listing_id'] as String? ?? '',
+      publicUrl: rawUrl.startsWith('/') ? '$baseUrl$rawUrl' : rawUrl,
+      title: json['title'] as String? ?? 'Public listing',
+    );
+  }
+
+  final String listingId;
+  final String publicUrl;
+  final String title;
 }
 
 double _readDouble(Object? value) {
