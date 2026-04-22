@@ -1,8 +1,22 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, File, UploadFile
 
-from schemas.analysis import AnalysisRequest, AnalysisResponse, DetectedItem
+from schemas.analysis import (
+    AnalysisRequest,
+    AnalysisResponse,
+    DetectedItem,
+    ImageIntakeResponse,
+)
+from services.image_intake import ImageIntakeService
 
 router = APIRouter(prefix="/analysis", tags=["analysis"])
+
+intake_service = ImageIntakeService()
+
+
+@router.post("/intake", response_model=ImageIntakeResponse)
+async def intake_image(image: UploadFile = File(...)) -> ImageIntakeResponse:
+    result = await intake_service.intake(image)
+    return ImageIntakeResponse(**result.__dict__)
 
 
 @router.post("/run", response_model=AnalysisResponse)
