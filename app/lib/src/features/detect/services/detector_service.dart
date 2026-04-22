@@ -292,15 +292,19 @@ class DetectorService {
       }
     }
 
-    if (boxesBuffer == null || classesBuffer == null || scoresBuffer == null) {
+    final boxesData = boxesBuffer?.data;
+    final classesData = classesBuffer?.data;
+    final scoresData = scoresBuffer?.data;
+    if (boxesData == null || classesData == null || scoresData == null) {
       return const [];
     }
 
-    final boxes = _castToBoxList(boxesBuffer.data);
-    final classes = _castToDoubleList(classesBuffer.data);
-    final scores = _castToDoubleList(scoresBuffer.data);
-    final total = countBuffer != null
-        ? _readFirstDouble(countBuffer.data)?.round() ?? boxes.length
+    final boxes = _castToBoxList(boxesData);
+    final classes = _castToDoubleList(classesData);
+    final scores = _castToDoubleList(scoresData);
+    final countData = countBuffer?.data;
+    final total = countData != null
+        ? _readFirstDouble(countData)?.round() ?? boxes.length
         : boxes.length;
 
     final detections = <Detection>[];
