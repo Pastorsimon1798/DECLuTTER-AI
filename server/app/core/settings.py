@@ -6,10 +6,21 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class RuntimeReadiness:
+    shared_token_auth_configured: bool
+    local_upload_storage_configured: bool
+    sqlite_session_store_configured: bool
     firebase_admin_configured: bool
     cloud_storage_configured: bool
     multimodal_model_configured: bool
     ebay_api_configured: bool
+
+    @property
+    def self_hosted_mvp_ready(self) -> bool:
+        return (
+            self.shared_token_auth_configured
+            and self.local_upload_storage_configured
+            and self.sqlite_session_store_configured
+        )
 
     @property
     def ready_for_production(self) -> bool:
@@ -44,6 +55,9 @@ class Settings:
     @staticmethod
     def readiness() -> RuntimeReadiness:
         return RuntimeReadiness(
+            shared_token_auth_configured=Settings._shared_token_auth_configured(),
+            local_upload_storage_configured=Settings._local_upload_storage_configured(),
+            sqlite_session_store_configured=Settings._sqlite_session_store_configured(),
             firebase_admin_configured=Settings._configured_env("FIREBASE_PROJECT_ID"),
             cloud_storage_configured=Settings._cloud_storage_configured(),
             multimodal_model_configured=Settings._configured_env(
@@ -63,6 +77,26 @@ class Settings:
         )
 
     @staticmethod
+    def _shared_token_auth_configured() -> bool:
+        auth_mode = os.getenv("DECLUTTER_AUTH_MODE", "strict").strip().lower()
+        return auth_mode == "shared_token" and Settings._configured_env(
+            "DECLUTTER_SHARED_ACCESS_TOKEN"
+        )
+
+    @staticmethod
+    def _local_upload_storage_configured() -> bool:
+        storage_backend = os.getenv("DECLUTTER_STORAGE_BACKEND", "local").strip().lower()
+        if storage_backend != "local":
+            return False
+
+        upload_dir = os.getenv("DECLUTTER_UPLOAD_DIR", "")
+        return Settings._configured_path(upload_dir)
+
+    @staticmethod
+    def _sqlite_session_store_configured() -> bool:
+        return Settings._configured_path(os.getenv("DECLUTTER_SESSION_DB_PATH", ""))
+
+    @staticmethod
     def _configured_env(name: str) -> bool:
         value = os.getenv(name)
         if value is None:
@@ -79,6 +113,18 @@ class Settings:
             return False
 
         return "example" not in normalized and "placeholder" not in normalized
+
+    @staticmethod
+    def _configured_path(value: str) -> bool:
+        normalized = value.strip()
+        if not normalized:
+            return False
+
+        lowered = normalized.lower()
+        if "example" in lowered or "placeholder" in lowered:
+            return False
+
+        return not lowered.startswith("/tmp/")
 
     @staticmethod
     def cors_allow_origins() -> list[str]:

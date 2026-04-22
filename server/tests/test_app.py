@@ -20,10 +20,15 @@ VALID_HEADERS = {
     'X-Firebase-AppCheck': 'test-app-check-token',
 }
 
+SHARED_TOKEN_HEADERS = {
+    'Authorization': 'Bearer self-hosted-secret',
+}
+
 
 def _clear_auth_env() -> None:
     for key in [
         'DECLUTTER_AUTH_MODE',
+        'DECLUTTER_SHARED_ACCESS_TOKEN',
         'DECLUTTER_TEST_ID_TOKEN',
         'DECLUTTER_TEST_APP_CHECK_TOKEN',
     ]:
@@ -39,6 +44,10 @@ def _clear_readiness_env() -> None:
         'DECLUTTER_STORAGE_BUCKET',
         'DECLUTTER_CORS_ALLOW_ORIGINS',
         'DECLUTTER_MODEL_PROVIDER',
+        'DECLUTTER_AUTH_MODE',
+        'DECLUTTER_SHARED_ACCESS_TOKEN',
+        'DECLUTTER_UPLOAD_DIR',
+        'DECLUTTER_SESSION_DB_PATH',
         'EBAY_CLIENT_ID',
         'EBAY_CLIENT_SECRET',
     ]:
@@ -82,6 +91,7 @@ def test_launch_status_reports_backend_scaffold_limitations() -> None:
     body = response.json()
     assert body['service'] == 'DECLuTTER-AI API'
     assert body['launch_profile'] == 'backend_scaffold'
+    assert body['self_hosted_mvp_ready'] is False
     assert body['checks']['firebase_admin_configured'] is False
     assert body['checks']['cloud_storage_configured'] is False
     assert body['checks']['multimodal_model_configured'] is False
@@ -97,7 +107,26 @@ def test_readiness_defaults_to_not_ready() -> None:
     response = client.get('/health/readiness')
     assert response.status_code == 200
     body = response.json()
+    assert body['self_hosted_mvp_ready'] is False
     assert body['ready_for_production'] is False
+
+
+def test_readiness_can_report_self_hosted_mvp_ready(tmp_path: Path) -> None:
+    _clear_readiness_env()
+    os.environ['DECLUTTER_AUTH_MODE'] = 'shared_token'
+    os.environ['DECLUTTER_SHARED_ACCESS_TOKEN'] = 'self-hosted-secret'
+    os.environ['DECLUTTER_STORAGE_BACKEND'] = 'local'
+    os.environ['DECLUTTER_UPLOAD_DIR'] = str(tmp_path / 'uploads')
+    os.environ['DECLUTTER_SESSION_DB_PATH'] = str(tmp_path / 'sessions.sqlite3')
+
+    response = client.get('/health/readiness')
+    assert response.status_code == 200
+    body = response.json()
+    assert body['self_hosted_mvp_ready'] is True
+    assert body['ready_for_production'] is False
+    assert body['checks']['shared_token_auth_configured'] is True
+    assert body['checks']['local_upload_storage_configured'] is True
+    assert body['checks']['sqlite_session_store_configured'] is True
 
 
 def test_readiness_can_report_ready_when_all_env_present() -> None:
@@ -221,6 +250,36 @@ def test_analysis_scaffold() -> None:
     assert len(body['items']) >= 1
     assert body['engine'] == 'mock-structured-v1'
     assert body['structured_output_version'] == '2026-04-wp5-starter'
+
+
+def test_analysis_accepts_self_hosted_shared_token_without_app_check() -> None:
+    os.environ['DECLUTTER_AUTH_MODE'] = 'shared_token'
+    os.environ['DECLUTTER_SHARED_ACCESS_TOKEN'] = 'self-hosted-secret'
+    dependencies.get_firebase_verifier.cache_clear()
+
+    response = client.post(
+        '/analysis/run',
+        json={'session_id': 's-1', 'image_storage_key': 'private/key.jpg'},
+        headers=SHARED_TOKEN_HEADERS,
+    )
+    body = response.json()
+    assert response.status_code == 200
+    assert body['session_id'] == 's-1'
+    assert len(body['items']) >= 1
+
+
+def test_analysis_rejects_wrong_self_hosted_shared_token() -> None:
+    os.environ['DECLUTTER_AUTH_MODE'] = 'shared_token'
+    os.environ['DECLUTTER_SHARED_ACCESS_TOKEN'] = 'self-hosted-secret'
+    dependencies.get_firebase_verifier.cache_clear()
+
+    response = client.post(
+        '/analysis/run',
+        json={'session_id': 's-1', 'image_storage_key': 'private/key.jpg'},
+        headers={'Authorization': 'Bearer wrong-token'},
+    )
+    assert response.status_code == 401
+    assert response.json()['detail'] == 'Invalid shared access token.'
 
 
 def test_intake_strips_exif_and_stores_file(tmp_path: Path) -> None:

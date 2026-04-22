@@ -44,7 +44,7 @@ server/deploy/hostinger-vps/
 It provides:
 
 - `docker-compose.yml` for the backend container and HTTPS reverse proxy.
-- `env.example` as the VPS-only secret template.
+- `env.example` as the VPS-only secret template for a self-hosted MVP.
 - `smoke.sh` for public URL health checks.
 
 The current Hostinger MCP integration can inspect/create hosting resources, but
@@ -53,7 +53,31 @@ Use standard VPS SSH plus this bundle for backend launch.
 
 ## Environment profiles
 
-### Public production profile
+### Self-hosted MVP profile
+
+Use this first on the VPS. It avoids Firebase, S3, and automatic marketplace API
+publishing.
+
+```bash
+DECLUTTER_AUTH_MODE=shared_token
+DECLUTTER_SHARED_ACCESS_TOKEN=<long-random-token>
+DECLUTTER_CORS_ALLOW_ORIGINS=https://your-frontend.example
+DECLUTTER_STORAGE_BACKEND=local
+DECLUTTER_UPLOAD_DIR=/data/uploads
+DECLUTTER_SESSION_DB_PATH=/data/declutter_ai_sessions.sqlite3
+```
+
+Clients call protected routes with:
+
+```text
+Authorization: Bearer <long-random-token>
+```
+
+`/health/readiness` should report `self_hosted_mvp_ready: true` for this profile.
+It can still report `ready_for_production: false`; that production flag is for
+the later Firebase/S3/eBay stack.
+
+### Public production upgrade profile
 
 Use this for any public URL:
 
@@ -70,7 +94,7 @@ EBAY_CLIENT_SECRET=...
 
 `/health/readiness` should return `ready_for_production: true` only after those external services are configured.
 
-### Private demo profile
+### Private scaffold/test profile
 
 Use only behind localhost, Tailscale, VPN, or another access gate:
 

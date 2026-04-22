@@ -30,14 +30,15 @@ This file tracks implementation progress against `DECLUTTER_AI_2026_LAUNCH_PLAN_
 - ✅ Standalone listing fallback: users can generate public HTML listing pages without eBay or marketplace publishing.
 - ✅ Flutter standalone listing page starter: synced sprint groups can request and display public listing-page links.
 - ✅ Session summary/history: backend session list + summary endpoints and Flutter sprint summary card.
-- ✅ Hostinger VPS deploy handoff: Docker Compose + Caddy bundle, VPS env template, and public URL smoke script.
+- ✅ Hostinger VPS deploy handoff: Docker Compose + Caddy bundle, self-hosted MVP env template, and public URL smoke script.
+- ✅ Self-hosted MVP readiness: shared-token auth, local uploads, and SQLite persistence can pass a separate `self_hosted_mvp_ready` gate without Firebase/S3/eBay.
 
 ## Next implementation steps
 
-1. Ops: deploy the backend container on the Hostinger VPS using `server/deploy/hostinger-vps/`.
-2. WP3: provision Firebase Admin credentials + production token validation smoke tests.
-3. WP4: replace local signed-upload stub with cloud object storage + scanner integration.
-4. WP5: replace mock structured adapter with real multimodal model inference + eval set.
-5. WP6: connect live eBay comps retrieval and confidence calibration metrics.
-6. WP8/WP9: OAuth connection, policy checks, and real eBay publish pipeline.
-7. Ops: wire deploy host gates to fail deploy when `/health/readiness` checks are not satisfied.
+1. Ops: deploy the self-hosted MVP container on the Hostinger VPS using `server/deploy/hostinger-vps/`.
+2. UX/API: point the Flutter or web client at the VPS URL with the shared bearer token.
+3. WP5: replace mock structured adapter with real or local multimodal model inference + eval set.
+4. WP6: improve valuation with local/manual comps workflow before requiring live marketplace APIs.
+5. WP8/WP9: keep public HTML listing pages and manual marketplace posting as the MVP path; add OAuth/eBay API later.
+6. Later production: provision Firebase Admin credentials + production token validation smoke tests only when real public user accounts are needed.
+7. Later production: replace local uploads with object storage only when VPS disk is no longer enough.

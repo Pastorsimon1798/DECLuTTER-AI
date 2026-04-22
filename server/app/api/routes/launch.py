@@ -28,7 +28,7 @@ def launch_landing_page() -> str:
     <main class="card">
       <h1>DECLuTTER-AI Launch API</h1>
       <p>Same-day backend scaffold for Cash-to-Clear: protected image intake, starter analysis, valuation, listing drafts, mock eBay publish/export, public listing packets, and launch health checks.</p>
-      <p><strong>Launch gate:</strong> use <a href="/health/readiness">/health/readiness</a> before calling this production-ready.</p>
+      <p><strong>Launch gate:</strong> use <a href="/health/readiness">/health/readiness</a> to distinguish self-hosted MVP readiness from public production readiness.</p>
       <p><strong>API docs:</strong> inspect <a href="/docs">/docs</a> or machine-readable <a href="/openapi.json">/openapi.json</a>.</p>
       <p><strong>Status JSON:</strong> <a href="/launch/status">/launch/status</a>.</p>
     </main>
@@ -43,8 +43,12 @@ def launch_status() -> dict[str, object]:
     return {
         "service": "DECLuTTER-AI API",
         "launch_profile": "backend_scaffold",
+        "self_hosted_mvp_ready": readiness.self_hosted_mvp_ready,
         "production_ready": readiness.ready_for_production,
         "checks": {
+            "shared_token_auth_configured": readiness.shared_token_auth_configured,
+            "local_upload_storage_configured": readiness.local_upload_storage_configured,
+            "sqlite_session_store_configured": readiness.sqlite_session_store_configured,
             "firebase_admin_configured": readiness.firebase_admin_configured,
             "cloud_storage_configured": readiness.cloud_storage_configured,
             "multimodal_model_configured": readiness.multimodal_model_configured,
@@ -59,8 +63,8 @@ def launch_status() -> dict[str, object]:
             "/public/listings/{listing_id}",
         ],
         "limitations": [
-            "Private routes require Firebase Auth/App Check headers unless explicitly running a private scaffold demo.",
-            "Analysis, valuation, listing generation, and eBay publish currently use deterministic starter adapters.",
-            "Production launch still requires live Firebase Admin credentials, durable object storage, model provider configuration, and real eBay API credentials.",
+            "Self-hosted MVP mode can run with a shared bearer token, local disk uploads, and a SQLite session store on the VPS.",
+            "Analysis, valuation, listing generation, and eBay publish currently use deterministic starter adapters; eBay can be manual via drafts and public HTML pages.",
+            "Firebase, S3, and real eBay API credentials are later public-production upgrades, not blockers for a private/self-hosted MVP.",
         ],
     }

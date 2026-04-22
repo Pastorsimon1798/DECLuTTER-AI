@@ -10,6 +10,7 @@ class FirebaseSecuritySettings:
     auth_mode: str
     accepted_id_token: str
     accepted_app_check_token: str
+    shared_access_token: str
 
     @classmethod
     def from_env(cls) -> "FirebaseSecuritySettings":
@@ -17,6 +18,7 @@ class FirebaseSecuritySettings:
             auth_mode=os.getenv("DECLUTTER_AUTH_MODE", "strict").strip().lower(),
             accepted_id_token=os.getenv("DECLUTTER_TEST_ID_TOKEN", ""),
             accepted_app_check_token=os.getenv("DECLUTTER_TEST_APP_CHECK_TOKEN", ""),
+            shared_access_token=os.getenv("DECLUTTER_SHARED_ACCESS_TOKEN", ""),
         )
 
 
@@ -25,6 +27,7 @@ class FirebaseTokenVerifier:
 
     Supported modes:
     - off: bypass validation entirely (local-only).
+    - shared_token: one shared bearer token for self-hosted MVP deployments.
     - scaffold: fixed token checks for deterministic tests/dev.
     - strict: uses Firebase Admin SDK token verification.
     """
@@ -35,6 +38,15 @@ class FirebaseTokenVerifier:
     def verify_id_token(self, token: str) -> dict[str, Any]:
         if self.settings.auth_mode == "off":
             return {"uid": "local-dev"}
+
+        if self.settings.auth_mode == "shared_token":
+            self._require_scaffold_token(
+                self.settings.shared_access_token,
+                "DECLUTTER_SHARED_ACCESS_TOKEN",
+            )
+            if token != self.settings.shared_access_token:
+                raise ValueError("Invalid shared access token.")
+            return {"uid": "self-hosted-user"}
 
         if self.settings.auth_mode == "scaffold":
             self._require_scaffold_token(
@@ -53,6 +65,9 @@ class FirebaseTokenVerifier:
     def verify_app_check_token(self, token: str) -> dict[str, Any]:
         if self.settings.auth_mode == "off":
             return {"app_id": "local-dev"}
+
+        if self.settings.auth_mode == "shared_token":
+            return {"app_id": "self-hosted-mvp"}
 
         if self.settings.auth_mode == "scaffold":
             self._require_scaffold_token(
