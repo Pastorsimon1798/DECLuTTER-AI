@@ -27,7 +27,7 @@ def require_firebase_protection(
             detail="Missing or invalid Authorization header.",
         )
 
-    if not x_firebase_appcheck:
+    if verifier.settings.auth_mode != "shared_token" and not x_firebase_appcheck:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing Firebase App Check header.",
@@ -37,7 +37,8 @@ def require_firebase_protection(
 
     try:
         user_claims = verifier.verify_id_token(id_token)
-        app_claims = verifier.verify_app_check_token(x_firebase_appcheck.strip())
+        app_check_token = x_firebase_appcheck.strip() if x_firebase_appcheck else ""
+        app_claims = verifier.verify_app_check_token(app_check_token)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

@@ -4,18 +4,22 @@ Use this checklist to get a safe public/demo backend online today without losing
 
 ## 1. Decide the launch profile
 
-### Private demo
+### Self-hosted MVP
 
-Use this if the goal is to show the flow today behind localhost, Tailscale, VPN, or a password/access gate.
+Use this first if the goal is to get the Cash-to-Clear loop working on your VPS
+without Firebase, S3, or automatic eBay posting.
 
-- Auth: `DECLUTTER_AUTH_MODE=scaffold` with long random demo tokens.
-- Storage: `DECLUTTER_STORAGE_BACKEND=local` and a persistent host volume.
+- Auth: `DECLUTTER_AUTH_MODE=shared_token` with one long random bearer token.
+- Storage: `DECLUTTER_STORAGE_BACKEND=local` and a persistent VPS volume.
+- Database: SQLite at a persistent `DECLUTTER_SESSION_DB_PATH`.
 - Model/eBay: current deterministic starter adapters.
-- Do not call this production-ready.
+- Listings: generate drafts and standalone public HTML listing pages; publish to
+  marketplaces manually for now.
+- Health gate: `/health/readiness` should report `self_hosted_mvp_ready: true`.
 
 ### Public production candidate
 
-Use this for any unauthenticated public URL.
+Use this later for real public users and automated marketplace integrations.
 
 - Auth: `DECLUTTER_AUTH_MODE=strict`.
 - Firebase Admin credentials are configured in the host environment.
@@ -59,7 +63,7 @@ python scripts/smoke_backend.py --url http://127.0.0.1:8080
 
 ## 4. Hostinger VPS deploy path
 
-Use this when the backend should run on a Hostinger VPS:
+Use this when the backend should run on a Hostinger VPS as the self-hosted MVP:
 
 ```bash
 cd server/deploy/hostinger-vps
@@ -73,8 +77,10 @@ Prerequisites:
 
 - DNS `A` record for the API hostname points to the VPS public IP.
 - Ports `80` and `443` are reachable so Caddy can issue HTTPS certificates.
-- `env.hostinger` uses strict auth for public URLs, or scaffold auth only behind
-  a private access gate.
+- `env.hostinger` uses `DECLUTTER_AUTH_MODE=shared_token` with a long random
+  bearer token.
+- `DECLUTTER_STORAGE_BACKEND=local`, `DECLUTTER_UPLOAD_DIR`, and
+  `DECLUTTER_SESSION_DB_PATH` point at persistent VPS/container volume paths.
 
 ## 5. Launch blockers to resolve before calling this production
 
@@ -87,7 +93,7 @@ Prerequisites:
 ## 6. What is safe to say today
 
 - Safe: “Backend scaffold is deployable and review-gated.”
-- Safe: “Demo mode can show the Cash-to-Clear flow with deterministic starter adapters.”
+- Safe: “Self-hosted MVP mode can show the Cash-to-Clear flow with deterministic starter adapters.”
 - Safe: “Users can generate standalone listing HTML pages when they do not want marketplace publishing.”
 - Not safe yet: “Fully production marketplace publishing is live.”
 - Not safe yet: “Valuations are real marketplace-backed estimates.”

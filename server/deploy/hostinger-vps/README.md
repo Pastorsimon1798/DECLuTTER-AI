@@ -53,7 +53,7 @@ sudo apt-get update
 sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 ```
 
-## Deploy
+## Deploy self-hosted MVP
 
 From the repo checkout on the VPS:
 
@@ -65,12 +65,21 @@ docker compose --env-file env.hostinger up -d --build
 docker compose --env-file env.hostinger ps
 ```
 
-For a public URL, keep `DECLUTTER_AUTH_MODE=strict` and provide Firebase,
-storage, CORS, model-provider, and eBay values through `env.hostinger` or a host
-secret manager.
+For the self-hosted MVP, keep:
 
-For a private demo only, `env.example` includes scaffold-mode comments. Do not
-run scaffold mode on an unauthenticated public internet URL.
+```text
+DECLUTTER_AUTH_MODE=shared_token
+DECLUTTER_STORAGE_BACKEND=local
+DECLUTTER_SESSION_DB_PATH=/data/declutter_ai_sessions.sqlite3
+DECLUTTER_UPLOAD_DIR=/data/uploads
+```
+
+Generate a long random `DECLUTTER_SHARED_ACCESS_TOKEN` on the VPS. This replaces
+Firebase for the first self-hosted version: clients send it as
+`Authorization: Bearer <token>`.
+
+You do **not** need Firebase, S3, or eBay API credentials for this self-hosted
+MVP. Those are later public-production upgrades.
 
 ## Verify
 
@@ -82,9 +91,9 @@ docker compose --env-file env.hostinger logs --tail=100 declutter-api
 Expected:
 
 - `/health/` returns `{"status":"ok"}`.
-- `/health/readiness` matches the selected launch profile.
+- `/health/readiness` returns `self_hosted_mvp_ready: true` after the shared
+  token, local upload directory, and SQLite path are configured.
 - `/launch/status` reports the backend scaffold limitations clearly.
 
-If `/health/readiness` reports `ready_for_production: false`, treat the URL as a
-private demo or staging endpoint until the missing production dependencies are
-configured.
+It is okay for `ready_for_production` to remain `false` in this mode. That flag
+means the later Firebase/S3/eBay public-production stack is configured.
