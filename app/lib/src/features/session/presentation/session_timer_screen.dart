@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../../grouping/domain/detection_group.dart';
 import '../../grouping/domain/grouped_detection_result.dart';
 import '../domain/session_decision.dart';
+import '../services/cash_to_clear_api.dart';
 import 'widgets/focus_timer.dart';
 import 'widgets/quick_start_card.dart';
 
@@ -15,11 +16,13 @@ class SessionTimerScreen extends StatefulWidget {
     this.capturedImagePath,
     this.capturedAt,
     this.groupedResult = const GroupedDetectionResult.empty(),
+    this.cashToClearApi,
   });
 
   final String? capturedImagePath;
   final DateTime? capturedAt;
   final GroupedDetectionResult groupedResult;
+  final CashToClearApiClient? cashToClearApi;
 
   @override
   State<SessionTimerScreen> createState() => _SessionTimerScreenState();
@@ -27,13 +30,68 @@ class SessionTimerScreen extends StatefulWidget {
 
 class _SessionTimerScreenState extends State<SessionTimerScreen> {
   final List<SessionDecision> _decisions = [];
+  final Map<String, CashToClearItemDto> _remoteItemsByGroupId = {};
   String? _selectedGroupId;
+  late final CashToClearApiClient _cashToClearApi;
+  String? _remoteSessionId;
+  double? _moneyOnTableLowUsd;
+  double? _moneyOnTableHighUsd;
+  bool _isSyncingCashToClear = false;
+  String? _cashToClearSyncMessage;
 
   @override
   void initState() {
     super.initState();
+    _cashToClearApi = widget.cashToClearApi ?? CashToClearApiClient.fromEnvironment();
     if (widget.groupedResult.hasGroups) {
       _selectedGroupId = widget.groupedResult.primaryGroup?.id;
+    }
+    _bootstrapCashToClearSession();
+  }
+
+  Future<void> _bootstrapCashToClearSession() async {
+    if (!_cashToClearApi.isConfigured || !widget.groupedResult.hasGroups) {
+      _cashToClearSyncMessage = _cashToClearApi.isConfigured
+          ? 'Cash-to-Clear backend is ready. Capture detections to sync values.'
+          : 'Local mode: add DECLUTTER_API_BASE_URL, DECLUTTER_ID_TOKEN, and DECLUTTER_APP_CHECK_TOKEN to sync values.';
+      return;
+    }
+
+    setState(() {
+      _isSyncingCashToClear = true;
+      _cashToClearSyncMessage = 'Syncing Cash-to-Clear values...';
+    });
+
+    try {
+      final session = await _cashToClearApi.createSession();
+      final remoteItems = <String, CashToClearItemDto>{};
+      for (final group in widget.groupedResult.groups) {
+        final remoteItem = await _cashToClearApi.addItem(
+          sessionId: session.sessionId,
+          label: group.displayLabel,
+          condition: 'unknown',
+        );
+        remoteItems[group.id] = remoteItem;
+      }
+
+      final refreshed = await _cashToClearApi.getSession(session.sessionId);
+      if (!mounted) return;
+      setState(() {
+        _remoteSessionId = refreshed.sessionId;
+        _remoteItemsByGroupId
+          ..clear()
+          ..addAll(remoteItems);
+        _moneyOnTableLowUsd = refreshed.moneyOnTableLowUsd;
+        _moneyOnTableHighUsd = refreshed.moneyOnTableHighUsd;
+        _isSyncingCashToClear = false;
+        _cashToClearSyncMessage = 'Cash-to-Clear values synced.';
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _isSyncingCashToClear = false;
+        _cashToClearSyncMessage = 'Local mode: backend sync failed ($error).';
+      });
     }
   }
 
@@ -73,6 +131,52 @@ class _SessionTimerScreenState extends State<SessionTimerScreen> {
         ),
       );
     });
+
+    await _recordRemoteDecision(
+      group: selectedGroup,
+      category: category,
+      note: note.isEmpty ? null : note,
+    );
+  }
+
+  Future<void> _recordRemoteDecision({
+    required DetectionGroup group,
+    required DecisionCategory category,
+    String? note,
+  }) async {
+    final sessionId = _remoteSessionId;
+    final remoteItem = _remoteItemsByGroupId[group.id];
+    if (!_cashToClearApi.isConfigured || sessionId == null || remoteItem == null) {
+      return;
+    }
+
+    setState(() {
+      _isSyncingCashToClear = true;
+      _cashToClearSyncMessage = 'Saving decision to Cash-to-Clear...';
+    });
+
+    try {
+      await _cashToClearApi.recordDecision(
+        sessionId: sessionId,
+        itemId: remoteItem.itemId,
+        category: category,
+        note: note,
+      );
+      final refreshed = await _cashToClearApi.getSession(sessionId);
+      if (!mounted) return;
+      setState(() {
+        _moneyOnTableLowUsd = refreshed.moneyOnTableLowUsd;
+        _moneyOnTableHighUsd = refreshed.moneyOnTableHighUsd;
+        _isSyncingCashToClear = false;
+        _cashToClearSyncMessage = 'Decision synced.';
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _isSyncingCashToClear = false;
+        _cashToClearSyncMessage = 'Decision saved locally; backend sync failed ($error).';
+      });
+    }
   }
 
   void _handleTimerCompleted() {
@@ -101,6 +205,15 @@ class _SessionTimerScreenState extends State<SessionTimerScreen> {
                 capturedAt: widget.capturedAt,
               ),
             const QuickStartCard(),
+            const SizedBox(height: 16),
+            CashToClearStatusCard(
+              isSyncing: _isSyncingCashToClear,
+              message: _cashToClearSyncMessage,
+              moneyOnTableLowUsd: _moneyOnTableLowUsd,
+              moneyOnTableHighUsd: _moneyOnTableHighUsd,
+              remoteItemsByGroupId: _remoteItemsByGroupId,
+              groupedResult: widget.groupedResult,
+            ),
             const SizedBox(height: 24),
             FocusTimer(onCompleted: _handleTimerCompleted),
             const SizedBox(height: 24),
@@ -178,6 +291,104 @@ class _CapturedPhotoPreview extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class CashToClearStatusCard extends StatelessWidget {
+  const CashToClearStatusCard({
+    super.key,
+    required this.isSyncing,
+    required this.message,
+    required this.moneyOnTableLowUsd,
+    required this.moneyOnTableHighUsd,
+    required this.remoteItemsByGroupId,
+    required this.groupedResult,
+  });
+
+  final bool isSyncing;
+  final String? message;
+  final double? moneyOnTableLowUsd;
+  final double? moneyOnTableHighUsd;
+  final Map<String, CashToClearItemDto> remoteItemsByGroupId;
+  final GroupedDetectionResult groupedResult;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final hasValue = moneyOnTableLowUsd != null && moneyOnTableHighUsd != null;
+    final valueText = hasValue
+        ? '\$${moneyOnTableLowUsd!.toStringAsFixed(0)}–${moneyOnTableHighUsd!.toStringAsFixed(0)}'
+        : '—';
+
+    return Card(
+      elevation: 0,
+      color: theme.colorScheme.secondaryContainer,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.attach_money, color: theme.colorScheme.onSecondaryContainer),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Money on the table',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: theme.colorScheme.onSecondaryContainer,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                if (isSyncing)
+                  const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              valueText,
+              style: theme.textTheme.headlineMedium?.copyWith(
+                color: theme.colorScheme.onSecondaryContainer,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            if (message != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                message!,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSecondaryContainer,
+                ),
+              ),
+            ],
+            if (remoteItemsByGroupId.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: groupedResult.groups.map((group) {
+                  final item = remoteItemsByGroupId[group.id];
+                  if (item == null) {
+                    return Chip(label: Text('${group.displayLabel}: syncing'));
+                  }
+                  return Chip(
+                    avatar: const Icon(Icons.sell_outlined),
+                    label: Text(
+                      '${group.displayLabel}: \$${item.valuation.lowUsd.toStringAsFixed(0)}–${item.valuation.highUsd.toStringAsFixed(0)}',
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

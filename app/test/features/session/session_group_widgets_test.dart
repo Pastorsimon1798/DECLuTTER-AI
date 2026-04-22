@@ -5,6 +5,7 @@ import 'package:declutter_ai/src/features/grouping/domain/detection_group.dart';
 import 'package:declutter_ai/src/features/grouping/domain/grouped_detection_result.dart';
 import 'package:declutter_ai/src/features/session/domain/session_decision.dart';
 import 'package:declutter_ai/src/features/session/presentation/session_timer_screen.dart';
+import 'package:declutter_ai/src/features/session/services/cash_to_clear_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -185,6 +186,49 @@ void main() {
       expect(find.text('Books · 1/2 sorted'), findsOneWidget);
       expect(find.text('Books: 1/2 sorted'), findsOneWidget);
       expect(find.textContaining('Progress: 1/2 items sorted'), findsOneWidget);
+    });
+  });
+
+  group('CashToClearStatusCard', () {
+    testWidgets('shows synced money on the table and group value chips', (tester) async {
+      final groups = [
+        buildGroup(id: 'group_1', label: 'books', count: 2),
+      ];
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Material(
+            child: CashToClearStatusCard(
+              isSyncing: false,
+              message: 'Cash-to-Clear values synced.',
+              moneyOnTableLowUsd: 12,
+              moneyOnTableHighUsd: 30,
+              groupedResult: buildGroupedResult(groups),
+              remoteItemsByGroupId: const {
+                'group_1': CashToClearItemDto(
+                  itemId: 'item_1',
+                  label: 'books',
+                  valuation: CashToClearValuationDto(
+                    lowUsd: 12,
+                    highUsd: 30,
+                    confidence: 'medium',
+                    source: 'mock-ebay-comps',
+                  ),
+                  listingDraft: CashToClearListingDraftDto(
+                    title: 'Books - Unknown',
+                    priceUsd: 21,
+                    categoryHint: 'Books & Magazines',
+                  ),
+                ),
+              },
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Money on the table'), findsOneWidget);
+      expect(find.text(r'$12–30'), findsOneWidget);
+      expect(find.textContaining('Books: \$12–30'), findsOneWidget);
     });
   });
 }

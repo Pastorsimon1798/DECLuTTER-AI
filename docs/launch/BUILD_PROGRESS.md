@@ -26,6 +26,7 @@ This file tracks implementation progress against `DECLUTTER_AI_2026_LAUNCH_PLAN_
 - ✅ Same-day launch hardening: backend CORS config, app factory, Dockerfile, env template, CI, and launch checklist.
 - ✅ Same-day smoke surface: public root page, `/launch/status`, and `server/scripts/smoke_backend.py`.
 - ✅ Cash-to-Clear product loop starter: durable sessions, items, decisions, valuations, listing drafts, and money-on-the-table totals.
+- ✅ Flutter Cash-to-Clear client starter: sprint UI can sync backend sessions, group valuations, decisions, and Money-on-the-Table totals when configured.
 
 ## Next implementation steps
 

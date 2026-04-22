@@ -68,6 +68,20 @@ cd app
 flutter test
 ```
 
+## Cash-to-Clear backend sync
+
+The sprint UI now stays local by default, but can sync detected groups, valuation ranges, listing drafts, decisions, and Money-on-the-Table totals to the backend session API when configured at run time:
+
+```bash
+cd app
+flutter run \
+  --dart-define=DECLUTTER_API_BASE_URL=https://your-backend.example \
+  --dart-define=DECLUTTER_ID_TOKEN=<firebase-id-token> \
+  --dart-define=DECLUTTER_APP_CHECK_TOKEN=<app-check-token>
+```
+
+If those values are omitted, the app keeps the existing local-only sprint flow.
+
 ## What works today
 
 - **Capture:** Request camera access, show a live preview, and snap one focused zone.
