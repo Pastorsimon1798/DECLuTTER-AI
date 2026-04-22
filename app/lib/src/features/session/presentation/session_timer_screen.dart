@@ -32,6 +32,7 @@ class _SessionTimerScreenState extends State<SessionTimerScreen> {
   final List<SessionDecision> _decisions = [];
   final Map<String, CashToClearItemDto> _remoteItemsByGroupId = {};
   final Map<String, String> _publicListingUrlsByGroupId = {};
+  final Set<String> _creatingListingPageGroupIds = {};
   final List<_PendingRemoteDecision> _pendingRemoteDecisions = [];
   String? _selectedGroupId;
   late final CashToClearApiClient _cashToClearApi;
@@ -279,6 +280,7 @@ class _SessionTimerScreenState extends State<SessionTimerScreen> {
 
     setState(() {
       _isSyncingCashToClear = true;
+      _creatingListingPageGroupIds.add(groupId);
       _cashToClearSyncMessage = 'Creating standalone listing page...';
     });
 
@@ -290,14 +292,17 @@ class _SessionTimerScreenState extends State<SessionTimerScreen> {
       if (!mounted) return;
       setState(() {
         _publicListingUrlsByGroupId[groupId] = listing.publicUrl;
+        _creatingListingPageGroupIds.remove(groupId);
         _isSyncingCashToClear = false;
         _cashToClearSyncMessage = 'Standalone listing page created.';
       });
     } catch (error) {
+      debugPrint('Cash-to-Clear public listing creation failed: $error');
       if (!mounted) return;
       setState(() {
+        _creatingListingPageGroupIds.remove(groupId);
         _isSyncingCashToClear = false;
-        _cashToClearSyncMessage = 'Could not create listing page ($error).';
+        _cashToClearSyncMessage = 'Could not create listing page. Please try again.';
       });
     }
   }
@@ -336,6 +341,7 @@ class _SessionTimerScreenState extends State<SessionTimerScreen> {
               moneyOnTableHighUsd: _moneyOnTableHighUsd,
               remoteItemsByGroupId: _remoteItemsByGroupId,
               publicListingUrlsByGroupId: _publicListingUrlsByGroupId,
+              creatingListingPageGroupIds: _creatingListingPageGroupIds,
               groupedResult: widget.groupedResult,
               onCreateListingPage: _createPublicListingPage,
             ),
@@ -442,6 +448,7 @@ class CashToClearStatusCard extends StatelessWidget {
     required this.moneyOnTableHighUsd,
     required this.remoteItemsByGroupId,
     required this.publicListingUrlsByGroupId,
+    required this.creatingListingPageGroupIds,
     required this.groupedResult,
     required this.onCreateListingPage,
   });
@@ -452,6 +459,7 @@ class CashToClearStatusCard extends StatelessWidget {
   final double? moneyOnTableHighUsd;
   final Map<String, CashToClearItemDto> remoteItemsByGroupId;
   final Map<String, String> publicListingUrlsByGroupId;
+  final Set<String> creatingListingPageGroupIds;
   final GroupedDetectionResult groupedResult;
   final ValueChanged<String> onCreateListingPage;
 
@@ -534,15 +542,24 @@ class CashToClearStatusCard extends StatelessWidget {
                   return const SizedBox.shrink();
                 }
                 final publicUrl = publicListingUrlsByGroupId[group.id];
+                final isCreating = creatingListingPageGroupIds.contains(group.id);
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       OutlinedButton.icon(
-                        onPressed: () => onCreateListingPage(group.id),
-                        icon: const Icon(Icons.public),
-                        label: Text('Create page for ${group.displayLabel}'),
+                        onPressed: isCreating || publicUrl != null
+                            ? null
+                            : () => onCreateListingPage(group.id),
+                        icon: Icon(isCreating ? Icons.hourglass_empty : Icons.public),
+                        label: Text(
+                          isCreating
+                              ? 'Creating page...'
+                              : publicUrl == null
+                                  ? 'Create page for ${group.displayLabel}'
+                                  : 'Page created for ${group.displayLabel}',
+                        ),
                       ),
                       if (publicUrl != null) ...[
                         const SizedBox(height: 4),
