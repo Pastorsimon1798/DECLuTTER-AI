@@ -68,6 +68,17 @@ DECLUTTER_MODEL_PROVIDER=mock-model
 
 Do not expose scaffold or off auth modes on the public internet.
 
+## Cash-to-Clear session store
+
+The backend persists session, item, decision, valuation, and listing-draft state in SQLite by default. Set `DECLUTTER_SESSION_DB_PATH` to a persistent path or mounted volume before running demos where users should keep session history across restarts.
+
+Protected session endpoints:
+
+- `POST /sessions` — create a Cash-to-Clear session.
+- `POST /sessions/{session_id}/items` — add a detected item and persist valuation + listing draft.
+- `POST /sessions/{session_id}/decisions` — record keep/donate/trash/recycle/relocate/maybe/sell decisions.
+- `GET /sessions/{session_id}` — retrieve durable session state and money-on-the-table totals.
+
 ## Same-day launch gate
 
 Before sharing the backend URL, verify:

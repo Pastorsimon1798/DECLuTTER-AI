@@ -353,3 +353,180 @@ def test_public_listing_does_not_require_auth() -> None:
     response = client.get('/public/listings/demo-listing')
     assert response.status_code == 200
     assert response.json()['listing_id'] == 'demo-listing'
+
+
+
+
+
+def test_cash_to_clear_session_create_accepts_empty_body(tmp_path: Path) -> None:
+    _set_auth_mode('scaffold')
+    os.environ['DECLUTTER_SESSION_DB_PATH'] = str(tmp_path / 'sessions.sqlite3')
+    from api.routes import sessions
+
+    sessions.get_cash_to_clear_service.cache_clear()
+
+    response = client.post('/sessions', headers=VALID_HEADERS)
+
+    assert response.status_code == 200
+    assert response.json()['session_id'].startswith('sess_')
+
+
+def test_cash_to_clear_sessions_are_scoped_to_authenticated_user(tmp_path: Path) -> None:
+    from types import SimpleNamespace
+
+    _set_auth_mode('scaffold')
+    os.environ['DECLUTTER_SESSION_DB_PATH'] = str(tmp_path / 'sessions.sqlite3')
+    from api.routes import sessions
+
+    class TokenUidVerifier:
+        settings = SimpleNamespace(auth_mode='strict')
+
+        def verify_id_token(self, token: str) -> dict[str, str]:
+            return {'uid': token}
+
+        def verify_app_check_token(self, token: str) -> dict[str, str]:
+            return {'app_id': token}
+
+    sessions.get_cash_to_clear_service.cache_clear()
+    dependencies.get_firebase_verifier.cache_clear()
+    app.dependency_overrides[dependencies.get_firebase_verifier] = TokenUidVerifier
+
+    try:
+        alice_headers = {
+            'Authorization': 'Bearer alice',
+            'X-Firebase-AppCheck': 'test-app-check-token',
+        }
+        bob_headers = {
+            'Authorization': 'Bearer bob',
+            'X-Firebase-AppCheck': 'test-app-check-token',
+        }
+        create = client.post('/sessions', headers=alice_headers)
+        assert create.status_code == 200
+        session_id = create.json()['session_id']
+
+        bob_read = client.get(f'/sessions/{session_id}', headers=bob_headers)
+        assert bob_read.status_code == 404
+        assert bob_read.json()['detail'] == 'Session not found.'
+
+        bob_add_item = client.post(
+            f'/sessions/{session_id}/items',
+            headers=bob_headers,
+            json={'label': 'electronics', 'condition': 'good'},
+        )
+        assert bob_add_item.status_code == 404
+
+        alice_read = client.get(f'/sessions/{session_id}', headers=alice_headers)
+        assert alice_read.status_code == 200
+        assert alice_read.json()['session_id'] == session_id
+    finally:
+        app.dependency_overrides.pop(dependencies.get_firebase_verifier, None)
+        dependencies.get_firebase_verifier.cache_clear()
+
+def test_cash_to_clear_sessions_require_auth() -> None:
+    _set_auth_mode('scaffold')
+    response = client.post('/sessions', json={})
+    assert response.status_code == 401
+
+def test_cash_to_clear_session_persists_items_decisions_and_totals(tmp_path: Path) -> None:
+    _set_auth_mode('scaffold')
+    os.environ['DECLUTTER_SESSION_DB_PATH'] = str(tmp_path / 'sessions.sqlite3')
+    from api.routes import sessions
+
+    sessions.get_cash_to_clear_service.cache_clear()
+
+    create = client.post(
+        '/sessions',
+        headers=VALID_HEADERS,
+        json={'image_storage_key': 'intake/demo.jpg'},
+    )
+    assert create.status_code == 200
+    created = create.json()
+    assert created['image_storage_key'] == 'intake/demo.jpg'
+    assert created['money_on_table_low_usd'] == 0
+
+    add_item = client.post(
+        f"/sessions/{created['session_id']}/items",
+        headers=VALID_HEADERS,
+        json={'label': 'electronics', 'condition': 'good'},
+    )
+    assert add_item.status_code == 200
+    item = add_item.json()
+    assert item['label'] == 'electronics'
+    assert item['valuation']['estimated_low_usd'] > 0
+    assert item['listing_draft']['title'] == 'Electronics - Good'
+
+    after_item = client.get(f"/sessions/{created['session_id']}", headers=VALID_HEADERS)
+    assert after_item.status_code == 200
+    body = after_item.json()
+    assert len(body['items']) == 1
+    assert body['money_on_table_low_usd'] == item['valuation']['estimated_low_usd']
+    assert body['items'][0]['decision'] is None
+
+    decision = client.post(
+        f"/sessions/{created['session_id']}/decisions",
+        headers=VALID_HEADERS,
+        json={'item_id': item['item_id'], 'decision': 'donate', 'note': 'Not worth listing today'},
+    )
+    assert decision.status_code == 200
+    decided = decision.json()
+    assert decided['decision'] == 'donate'
+    assert decided['note'] == 'Not worth listing today'
+
+    after_decision = client.get(f"/sessions/{created['session_id']}", headers=VALID_HEADERS)
+    assert after_decision.status_code == 200
+    final_body = after_decision.json()
+    assert final_body['money_on_table_low_usd'] == 0
+    assert final_body['items'][0]['decision']['decision'] == 'donate'
+
+
+
+def test_cash_to_clear_maybe_decision_removes_item_from_money_total(tmp_path: Path) -> None:
+    _set_auth_mode('scaffold')
+    os.environ['DECLUTTER_SESSION_DB_PATH'] = str(tmp_path / 'sessions.sqlite3')
+    from api.routes import sessions
+
+    sessions.get_cash_to_clear_service.cache_clear()
+
+    create = client.post('/sessions', headers=VALID_HEADERS, json={})
+    assert create.status_code == 200
+    session_id = create.json()['session_id']
+
+    add_item = client.post(
+        f'/sessions/{session_id}/items',
+        headers=VALID_HEADERS,
+        json={'label': 'electronics', 'condition': 'good'},
+    )
+    assert add_item.status_code == 200
+    item = add_item.json()
+    assert item['valuation']['estimated_low_usd'] > 0
+
+    decision = client.post(
+        f'/sessions/{session_id}/decisions',
+        headers=VALID_HEADERS,
+        json={'item_id': item['item_id'], 'decision': 'maybe'},
+    )
+    assert decision.status_code == 200
+
+    after_decision = client.get(f'/sessions/{session_id}', headers=VALID_HEADERS)
+    assert after_decision.status_code == 200
+    assert after_decision.json()['money_on_table_low_usd'] == 0
+
+def test_cash_to_clear_rejects_decision_for_unknown_item(tmp_path: Path) -> None:
+    _set_auth_mode('scaffold')
+    os.environ['DECLUTTER_SESSION_DB_PATH'] = str(tmp_path / 'sessions.sqlite3')
+    from api.routes import sessions
+
+    sessions.get_cash_to_clear_service.cache_clear()
+
+    create = client.post('/sessions', headers=VALID_HEADERS, json={})
+    assert create.status_code == 200
+    session_id = create.json()['session_id']
+
+    response = client.post(
+        f'/sessions/{session_id}/decisions',
+        headers=VALID_HEADERS,
+        json={'item_id': 'missing', 'decision': 'sell'},
+    )
+
+    assert response.status_code == 404
+    assert response.json()['detail'] == 'Item not found for this session.'

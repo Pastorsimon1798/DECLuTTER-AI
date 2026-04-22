@@ -25,6 +25,7 @@ This file tracks implementation progress against `DECLUTTER_AI_2026_LAUNCH_PLAN_
 - ✅ Launch ops helper: `/health/readiness` endpoint reports production dependency readiness from environment.
 - ✅ Same-day launch hardening: backend CORS config, app factory, Dockerfile, env template, CI, and launch checklist.
 - ✅ Same-day smoke surface: public root page, `/launch/status`, and `server/scripts/smoke_backend.py`.
+- ✅ Cash-to-Clear product loop starter: durable sessions, items, decisions, valuations, listing drafts, and money-on-the-table totals.
 
 ## Next implementation steps
 

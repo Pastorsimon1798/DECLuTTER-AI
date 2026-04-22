@@ -9,6 +9,7 @@ from api.routes.listing_drafts import router as listing_router
 from api.routes.marketplace_ebay import router as ebay_router
 from api.routes.mcp import router as mcp_router
 from api.routes.public_listings import router as public_listings_router
+from api.routes.sessions import router as sessions_router
 from api.routes.user_data import router as user_data_router
 from api.routes.valuation import router as valuation_router
 from core.settings import Settings
@@ -34,6 +35,7 @@ def create_app() -> FastAPI:
 
     protected = [Depends(require_firebase_protection)]
     api.include_router(analysis_router, dependencies=protected)
+    api.include_router(sessions_router, dependencies=protected)
     api.include_router(valuation_router, dependencies=protected)
     api.include_router(listing_router, dependencies=protected)
     api.include_router(ebay_router, dependencies=protected)
