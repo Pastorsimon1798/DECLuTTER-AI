@@ -153,7 +153,7 @@ class OpenAICompatibleAnalysisAdapter:
                 {"role": "user", "content": user_content},
             ],
             "temperature": 0,
-            "response_format": {"type": "json_object"},
+            "response_format": {"type": "text"},
         }
 
     def _image_data_url(self, image_storage_key: str) -> str | None:

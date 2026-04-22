@@ -428,6 +428,7 @@ def test_openai_compatible_analysis_adapter_parses_structured_items(
     request_payload = calls[0]['payload']
     assert isinstance(request_payload, dict)
     assert request_payload['model'] == 'local-vision-model'
+    assert request_payload['response_format'] == {'type': 'text'}
     user_content = request_payload['messages'][1]['content']  # type: ignore[index]
     assert user_content[1]['image_url']['url'].startswith('data:image/jpeg;base64,')
 
