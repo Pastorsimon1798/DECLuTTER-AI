@@ -934,3 +934,60 @@ def test_cash_to_clear_session_history_lists_only_authenticated_user_sessions(tm
     finally:
         app.dependency_overrides.pop(dependencies.get_firebase_verifier, None)
         dependencies.get_firebase_verifier.cache_clear()
+
+
+
+def test_operator_requires_basic_auth(monkeypatch) -> None:
+    monkeypatch.setenv('DECLUTTER_SHARED_ACCESS_TOKEN', 'operator-secret')
+    response = client.get('/operator')
+
+    assert response.status_code == 401
+    assert response.headers['www-authenticate'] == 'Basic realm="DECLuTTER-AI Operator"'
+
+
+def test_operator_home_renders_private_form(monkeypatch) -> None:
+    monkeypatch.setenv('DECLUTTER_SHARED_ACCESS_TOKEN', 'operator-secret')
+    response = client.get('/operator', auth=('operator', 'operator-secret'))
+
+    assert response.status_code == 200
+    assert response.headers['content-type'].startswith('text/html')
+    assert 'Run Cash-to-Clear sprint' in response.text
+    assert 'DECLuTTER-AI Operator' in response.text
+
+
+def test_operator_sprint_runs_without_exposing_bearer_token(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    from api.routes import operator, public_listings
+
+    monkeypatch.setenv('DECLUTTER_SHARED_ACCESS_TOKEN', 'operator-secret')
+    monkeypatch.setenv('DECLUTTER_STORAGE_BACKEND', 'local')
+    monkeypatch.setenv('DECLUTTER_UPLOAD_DIR', str(tmp_path / 'uploads'))
+    monkeypatch.setenv('DECLUTTER_SESSION_DB_PATH', str(tmp_path / 'sessions.sqlite3'))
+    monkeypatch.setenv('DECLUTTER_ANALYSIS_PROVIDER', 'mock')
+    monkeypatch.setenv('DECLUTTER_PUBLIC_BASE_PATH', 'declutter')
+    operator.get_operator_image_intake_service.cache_clear()
+    operator.get_operator_analysis_adapter.cache_clear()
+    operator.get_operator_session_store.cache_clear()
+    public_listings.get_public_listing_service.cache_clear()
+
+    try:
+        response = client.post(
+            '/operator/sprint',
+            auth=('operator', 'operator-secret'),
+            data={'condition': 'good', 'label_override': 'camera'},
+            files={'image': ('input.jpg', _build_jpeg_with_exif(), 'image/jpeg')},
+            headers={'host': 'kyanitelabs.tech', 'x-forwarded-proto': 'https'},
+        )
+
+        assert response.status_code == 200
+        assert 'Sprint complete' in response.text
+        assert 'Camera' in response.text or 'camera' in response.text
+        assert 'https://kyanitelabs.tech/declutter/public/listings/' in response.text
+        assert 'operator-secret' not in response.text
+    finally:
+        operator.get_operator_image_intake_service.cache_clear()
+        operator.get_operator_analysis_adapter.cache_clear()
+        operator.get_operator_session_store.cache_clear()
+        public_listings.get_public_listing_service.cache_clear()

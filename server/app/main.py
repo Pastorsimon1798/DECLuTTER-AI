@@ -8,6 +8,7 @@ from api.routes.launch import router as launch_router
 from api.routes.listing_drafts import router as listing_router
 from api.routes.marketplace_ebay import router as ebay_router
 from api.routes.mcp import router as mcp_router
+from api.routes.operator import router as operator_router
 from api.routes.public_listings import router as public_listings_router
 from api.routes.sessions import router as sessions_router
 from api.routes.user_data import router as user_data_router
@@ -32,6 +33,7 @@ def create_app() -> FastAPI:
     api.include_router(health_router)
     api.include_router(launch_router)
     api.include_router(public_listings_router)
+    api.include_router(operator_router)
 
     protected = [Depends(require_firebase_protection)]
     api.include_router(analysis_router, dependencies=protected)
