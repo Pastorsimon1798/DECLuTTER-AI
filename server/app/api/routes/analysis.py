@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 
 from schemas.analysis import (
     AnalysisRequest,
@@ -8,7 +8,7 @@ from schemas.analysis import (
     ImageIntakeResponse,
     IntakeSessionResponse,
 )
-from services.analysis_adapter import MockStructuredAnalysisAdapter
+from services.analysis_adapter import create_analysis_adapter_from_env
 from services.image_intake import ImageIntakeService
 from services.storage_adapter import (
     LocalSignedUploadAdapter,
@@ -27,7 +27,7 @@ def get_image_intake_service() -> ImageIntakeService:
     return build_image_intake_service()
 
 
-analysis_adapter = MockStructuredAnalysisAdapter()
+analysis_adapter = create_analysis_adapter_from_env()
 upload_adapter = LocalSignedUploadAdapter()
 
 
@@ -48,7 +48,13 @@ async def intake_image(
 
 @router.post("/run", response_model=AnalysisResponse)
 def run_analysis(payload: AnalysisRequest) -> AnalysisResponse:
-    result = analysis_adapter.run(payload.image_storage_key)
+    try:
+        result = analysis_adapter.run(payload.image_storage_key)
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
     return AnalysisResponse(
         session_id=payload.session_id,
         items=result.items,

@@ -81,6 +81,24 @@ Firebase for the first self-hosted version: clients send it as
 You do **not** need Firebase, S3, or eBay API credentials for this self-hosted
 MVP. Those are later public-production upgrades.
 
+## Optional home inference
+
+Declutter can use the same OpenAI-compatible / LM Studio style configuration
+that Achiote uses:
+
+```text
+DECLUTTER_ANALYSIS_PROVIDER=lmstudio
+DECLUTTER_INFERENCE_BASE_URL=http://host.docker.internal:1234/v1
+DECLUTTER_INFERENCE_MODEL=<loaded-vision-model-name>
+DECLUTTER_INFERENCE_TIMEOUT_SECONDS=180
+```
+
+The compose file maps `host.docker.internal` to the VPS host gateway for the API
+container. If the home inference server is reachable through a different private
+URL from the VPS, use that URL instead.
+
+Leave these variables commented out to keep using deterministic mock detections.
+
 ## Verify
 
 ```bash
@@ -93,6 +111,8 @@ Expected:
 - `/health/` returns `{"status":"ok"}`.
 - `/health/readiness` returns `self_hosted_mvp_ready: true` after the shared
   token, local upload directory, and SQLite path are configured.
+- `/health/readiness` returns `home_inference_configured: true` when the optional
+  OpenAI-compatible/LM Studio inference endpoint and model are configured.
 - `/launch/status` reports the backend scaffold limitations clearly.
 
 It is okay for `ready_for_production` to remain `false` in this mode. That flag

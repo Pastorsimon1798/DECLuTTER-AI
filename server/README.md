@@ -77,6 +77,29 @@ Authorization: Bearer <long-random-token>
 It can still report `ready_for_production: false`; that production flag is for
 the later Firebase/S3/eBay stack.
 
+### Home inference server profile
+
+Declutter can use the same OpenAI-compatible / LM Studio style setup that
+Achiote uses for your home inference server:
+
+```bash
+DECLUTTER_ANALYSIS_PROVIDER=lmstudio
+DECLUTTER_INFERENCE_BASE_URL=http://host.docker.internal:1234/v1
+DECLUTTER_INFERENCE_MODEL=<loaded-vision-model-name>
+DECLUTTER_INFERENCE_TIMEOUT_SECONDS=180
+# Optional if the local provider requires a bearer token:
+# DECLUTTER_INFERENCE_API_KEY=...
+```
+
+The Hostinger VPS compose file maps `host.docker.internal` to the VPS host
+gateway so the backend container can reach a provider bound on the host. If the
+inference server is reachable through another private URL, use that URL instead.
+
+When this is configured, `/health/readiness` reports
+`home_inference_configured: true`, and `/analysis/run` calls
+`/chat/completions` on that OpenAI-compatible endpoint. Without these variables,
+the backend keeps using the deterministic mock adapter.
+
 ### Public production upgrade profile
 
 Use this for any public URL:

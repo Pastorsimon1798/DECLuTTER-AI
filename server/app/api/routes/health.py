@@ -20,6 +20,7 @@ def readiness() -> dict[str, object]:
             "shared_token_auth_configured": state.shared_token_auth_configured,
             "local_upload_storage_configured": state.local_upload_storage_configured,
             "sqlite_session_store_configured": state.sqlite_session_store_configured,
+            "home_inference_configured": state.home_inference_configured,
             "firebase_admin_configured": state.firebase_admin_configured,
             "cloud_storage_configured": state.cloud_storage_configured,
             "multimodal_model_configured": state.multimodal_model_configured,

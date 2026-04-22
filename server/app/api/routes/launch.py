@@ -49,6 +49,7 @@ def launch_status() -> dict[str, object]:
             "shared_token_auth_configured": readiness.shared_token_auth_configured,
             "local_upload_storage_configured": readiness.local_upload_storage_configured,
             "sqlite_session_store_configured": readiness.sqlite_session_store_configured,
+            "home_inference_configured": readiness.home_inference_configured,
             "firebase_admin_configured": readiness.firebase_admin_configured,
             "cloud_storage_configured": readiness.cloud_storage_configured,
             "multimodal_model_configured": readiness.multimodal_model_configured,
@@ -64,6 +65,7 @@ def launch_status() -> dict[str, object]:
         ],
         "limitations": [
             "Self-hosted MVP mode can run with a shared bearer token, local disk uploads, and a SQLite session store on the VPS.",
+            "Home inference can use the same OpenAI-compatible/LM Studio style endpoint pattern as Achiote.",
             "Analysis, valuation, listing generation, and eBay publish currently use deterministic starter adapters; eBay can be manual via drafts and public HTML pages.",
             "Firebase, S3, and real eBay API credentials are later public-production upgrades, not blockers for a private/self-hosted MVP.",
         ],

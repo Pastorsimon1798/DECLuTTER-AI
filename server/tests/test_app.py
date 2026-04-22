@@ -10,6 +10,7 @@ from PIL import Image
 from api.routes import analysis
 from app.main import app
 from security import dependencies
+from services.analysis_adapter import OpenAICompatibleAnalysisAdapter
 from services.image_intake import ImageIntakeService
 from services.storage_adapter import LocalImageStorageAdapter
 
@@ -44,6 +45,17 @@ def _clear_readiness_env() -> None:
         'DECLUTTER_STORAGE_BUCKET',
         'DECLUTTER_CORS_ALLOW_ORIGINS',
         'DECLUTTER_MODEL_PROVIDER',
+        'DECLUTTER_ANALYSIS_PROVIDER',
+        'DECLUTTER_INFERENCE_API_KEY',
+        'DECLUTTER_INFERENCE_BASE_URL',
+        'DECLUTTER_INFERENCE_MODEL',
+        'DECLUTTER_INFERENCE_TIMEOUT_SECONDS',
+        'OPENAI_BASE_URL',
+        'OPENAI_MODEL',
+        'LMSTUDIO_BASE_URL',
+        'LMSTUDIO_MODEL',
+        'LM_STUDIO_BASE_URL',
+        'LM_STUDIO_MODEL',
         'DECLUTTER_AUTH_MODE',
         'DECLUTTER_SHARED_ACCESS_TOKEN',
         'DECLUTTER_UPLOAD_DIR',
@@ -129,6 +141,27 @@ def test_readiness_can_report_self_hosted_mvp_ready(tmp_path: Path) -> None:
     assert body['checks']['sqlite_session_store_configured'] is True
 
 
+def test_readiness_reports_home_inference_when_openai_compatible_env_present(
+    tmp_path: Path,
+) -> None:
+    _clear_readiness_env()
+    os.environ['DECLUTTER_AUTH_MODE'] = 'shared_token'
+    os.environ['DECLUTTER_SHARED_ACCESS_TOKEN'] = 'self-hosted-secret'
+    os.environ['DECLUTTER_STORAGE_BACKEND'] = 'local'
+    os.environ['DECLUTTER_UPLOAD_DIR'] = str(tmp_path / 'uploads')
+    os.environ['DECLUTTER_SESSION_DB_PATH'] = str(tmp_path / 'sessions.sqlite3')
+    os.environ['DECLUTTER_ANALYSIS_PROVIDER'] = 'lmstudio'
+    os.environ['LMSTUDIO_BASE_URL'] = 'http://host.docker.internal:1234/v1'
+    os.environ['LMSTUDIO_MODEL'] = 'qwen-vision-local'
+
+    response = client.get('/health/readiness')
+    assert response.status_code == 200
+    body = response.json()
+    assert body['self_hosted_mvp_ready'] is True
+    assert body['checks']['home_inference_configured'] is True
+    assert body['checks']['multimodal_model_configured'] is True
+
+
 def test_readiness_can_report_ready_when_all_env_present() -> None:
     os.environ['FIREBASE_PROJECT_ID'] = 'declutter-prod-123'
     os.environ['DECLUTTER_STORAGE_BACKEND'] = 's3'
@@ -145,6 +178,7 @@ def test_readiness_can_report_ready_when_all_env_present() -> None:
 
 
 def test_readiness_rejects_env_example_placeholders() -> None:
+    _clear_readiness_env()
     os.environ['FIREBASE_PROJECT_ID'] = 'your-firebase-project-id'
     os.environ['DECLUTTER_STORAGE_BACKEND'] = 's3'
     os.environ['DECLUTTER_S3_BUCKET'] = 'your-private-upload-bucket'
@@ -280,6 +314,68 @@ def test_analysis_rejects_wrong_self_hosted_shared_token() -> None:
     )
     assert response.status_code == 401
     assert response.json()['detail'] == 'Invalid shared access token.'
+
+
+def test_openai_compatible_analysis_adapter_parses_structured_items(
+    tmp_path: Path,
+) -> None:
+    image_path = tmp_path / 'intake' / 'item.jpg'
+    image_path.parent.mkdir(parents=True)
+    image_path.write_bytes(_build_jpeg_with_exif())
+    calls: list[dict[str, object]] = []
+
+    def fake_transport(
+        url: str,
+        payload: dict[str, object],
+        headers: dict[str, str],
+        timeout_seconds: float,
+    ) -> dict[str, object]:
+        calls.append(
+            {
+                'url': url,
+                'payload': payload,
+                'headers': headers,
+                'timeout_seconds': timeout_seconds,
+            }
+        )
+        return {
+            'choices': [
+                {
+                    'message': {
+                        'content': (
+                            '{"items":[{"label":"camera", "confidence":0.91}, '
+                            '{"label":"box", "confidence":1.4}]}'
+                        )
+                    }
+                }
+            ]
+        }
+
+    adapter = OpenAICompatibleAnalysisAdapter(
+        base_url='http://host.docker.internal:1234/v1',
+        model='local-vision-model',
+        api_key='local-key',
+        upload_dir=str(tmp_path),
+        timeout_seconds=12,
+        transport=fake_transport,
+    )
+
+    result = adapter.run('intake/item.jpg')
+
+    assert result.engine == 'openai-compatible:local-vision-model'
+    assert result.structured_output_version == '2026-04-home-inference'
+    assert [item.label for item in result.items] == ['camera', 'box']
+    assert result.items[1].confidence == 1.0
+    assert calls[0]['url'] == 'http://host.docker.internal:1234/v1/chat/completions'
+    assert calls[0]['headers'] == {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer local-key',
+    }
+    request_payload = calls[0]['payload']
+    assert isinstance(request_payload, dict)
+    assert request_payload['model'] == 'local-vision-model'
+    user_content = request_payload['messages'][1]['content']  # type: ignore[index]
+    assert user_content[1]['image_url']['url'].startswith('data:image/jpeg;base64,')
 
 
 def test_intake_strips_exif_and_stores_file(tmp_path: Path) -> None:

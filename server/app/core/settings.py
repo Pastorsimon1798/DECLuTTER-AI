@@ -9,6 +9,7 @@ class RuntimeReadiness:
     shared_token_auth_configured: bool
     local_upload_storage_configured: bool
     sqlite_session_store_configured: bool
+    home_inference_configured: bool
     firebase_admin_configured: bool
     cloud_storage_configured: bool
     multimodal_model_configured: bool
@@ -58,11 +59,13 @@ class Settings:
             shared_token_auth_configured=Settings._shared_token_auth_configured(),
             local_upload_storage_configured=Settings._local_upload_storage_configured(),
             sqlite_session_store_configured=Settings._sqlite_session_store_configured(),
+            home_inference_configured=Settings._home_inference_configured(),
             firebase_admin_configured=Settings._configured_env("FIREBASE_PROJECT_ID"),
             cloud_storage_configured=Settings._cloud_storage_configured(),
             multimodal_model_configured=Settings._configured_env(
                 "DECLUTTER_MODEL_PROVIDER"
-            ),
+            )
+            or Settings._home_inference_configured(),
             ebay_api_configured=bool(
                 Settings._configured_env("EBAY_CLIENT_ID")
                 and Settings._configured_env("EBAY_CLIENT_SECRET")
@@ -97,8 +100,49 @@ class Settings:
         return Settings._configured_path(os.getenv("DECLUTTER_SESSION_DB_PATH", ""))
 
     @staticmethod
+    def _home_inference_configured() -> bool:
+        provider = (
+            os.getenv("DECLUTTER_ANALYSIS_PROVIDER")
+            or os.getenv("DECLUTTER_MODEL_PROVIDER")
+            or ""
+        ).strip().lower()
+        if provider not in {
+            "home",
+            "home_inference",
+            "home-inference",
+            "lmstudio",
+            "lm-studio",
+            "openai",
+            "openai_compatible",
+            "openai-compatible",
+        }:
+            return False
+
+        base_url = (
+            os.getenv("DECLUTTER_INFERENCE_BASE_URL")
+            or os.getenv("OPENAI_BASE_URL")
+            or os.getenv("LMSTUDIO_BASE_URL")
+            or os.getenv("LM_STUDIO_BASE_URL")
+            or ("http://127.0.0.1:1234/v1" if "lm" in provider else "")
+        )
+        model = (
+            os.getenv("DECLUTTER_INFERENCE_MODEL")
+            or os.getenv("OPENAI_MODEL")
+            or os.getenv("LMSTUDIO_MODEL")
+            or os.getenv("LM_STUDIO_MODEL")
+            or ""
+        )
+        return Settings._configured_env_value(base_url) and Settings._configured_env_value(
+            model
+        )
+
+    @staticmethod
     def _configured_env(name: str) -> bool:
         value = os.getenv(name)
+        return Settings._configured_env_value(value)
+
+    @staticmethod
+    def _configured_env_value(value: str | None) -> bool:
         if value is None:
             return False
 

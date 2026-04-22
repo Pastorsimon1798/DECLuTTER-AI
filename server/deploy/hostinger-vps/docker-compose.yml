@@ -11,6 +11,8 @@ services:
       PORT: "8080"
       DECLUTTER_SESSION_DB_PATH: /data/declutter_ai_sessions.sqlite3
       DECLUTTER_UPLOAD_DIR: /data/uploads
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - declutter_data:/data
     expose:

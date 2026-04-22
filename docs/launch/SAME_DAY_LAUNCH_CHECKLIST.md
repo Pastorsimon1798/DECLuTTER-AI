@@ -12,7 +12,10 @@ without Firebase, S3, or automatic eBay posting.
 - Auth: `DECLUTTER_AUTH_MODE=shared_token` with one long random bearer token.
 - Storage: `DECLUTTER_STORAGE_BACKEND=local` and a persistent VPS volume.
 - Database: SQLite at a persistent `DECLUTTER_SESSION_DB_PATH`.
-- Model/eBay: current deterministic starter adapters.
+- Model: deterministic starter adapter by default, or the home inference server
+  through `DECLUTTER_ANALYSIS_PROVIDER=lmstudio`,
+  `DECLUTTER_INFERENCE_BASE_URL`, and `DECLUTTER_INFERENCE_MODEL`.
+- eBay: current deterministic starter adapter.
 - Listings: generate drafts and standalone public HTML listing pages; publish to
   marketplaces manually for now.
 - Health gate: `/health/readiness` should report `self_hosted_mvp_ready: true`.
@@ -81,6 +84,8 @@ Prerequisites:
   bearer token.
 - `DECLUTTER_STORAGE_BACKEND=local`, `DECLUTTER_UPLOAD_DIR`, and
   `DECLUTTER_SESSION_DB_PATH` point at persistent VPS/container volume paths.
+- Optional: configure the home inference server with the same OpenAI-compatible
+  / LM Studio env pattern used by Achiote.
 
 ## 5. Launch blockers to resolve before calling this production
 

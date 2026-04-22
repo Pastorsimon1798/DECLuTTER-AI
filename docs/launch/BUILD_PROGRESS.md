@@ -32,12 +32,13 @@ This file tracks implementation progress against `DECLUTTER_AI_2026_LAUNCH_PLAN_
 - ✅ Session summary/history: backend session list + summary endpoints and Flutter sprint summary card.
 - ✅ Hostinger VPS deploy handoff: Docker Compose + Caddy bundle, self-hosted MVP env template, and public URL smoke script.
 - ✅ Self-hosted MVP readiness: shared-token auth, local uploads, and SQLite persistence can pass a separate `self_hosted_mvp_ready` gate without Firebase/S3/eBay.
+- ✅ Home inference hook: optional OpenAI-compatible/LM Studio endpoint support mirrors Achiote's env pattern for using the home inference server.
 
 ## Next implementation steps
 
 1. Ops: deploy the self-hosted MVP container on the Hostinger VPS using `server/deploy/hostinger-vps/`.
 2. UX/API: point the Flutter or web client at the VPS URL with the shared bearer token.
-3. WP5: replace mock structured adapter with real or local multimodal model inference + eval set.
+3. WP5: point `DECLUTTER_ANALYSIS_PROVIDER=lmstudio` at the home inference server and build an eval set for item detection quality.
 4. WP6: improve valuation with local/manual comps workflow before requiring live marketplace APIs.
 5. WP8/WP9: keep public HTML listing pages and manual marketplace posting as the MVP path; add OAuth/eBay API later.
 6. Later production: provision Firebase Admin credentials + production token validation smoke tests only when real public user accounts are needed.
