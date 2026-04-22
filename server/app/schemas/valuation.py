@@ -11,3 +11,5 @@ class ValuationResponse(BaseModel):
     estimated_low_usd: float = Field(ge=0)
     estimated_high_usd: float = Field(ge=0)
     confidence: str
+    comp_count: int = Field(ge=0)
+    source: str
