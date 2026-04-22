@@ -1,15 +1,20 @@
 # DECLuTTER AI
 
-This repository now includes the first Flutter scaffolding for the ADHD-friendly decluttering assistant described in the MVP docs.
+This repository now includes the first Flutter scaffolding for the ADHD-friendly decluttering assistant described in the MVP docs, plus an initial FastAPI backend scaffold aligned to the 2026 launch plan.
 The current build lets you capture a clutter "zone" photo, preview it, and jump straight into the 10-minute sprint timer with ADHD-friendly guardrails.
 
 ## Structure
 
+- `DECLUTTER_AI_2026_LAUNCH_PLAN_WITH_PORTER_VALUE_CHAIN.md` — 2026 launch source of truth and implementation direction.
 - `ADHD_Vision_Organizer_MVP_Docs_v0.1.md` — product brief, user stories, and acceptance criteria.
 - `app/` — Flutter application source code for the MVP prototype.
   - `lib/src/features/capture/` — camera permissions + capture screen.
   - `lib/src/features/detect/` — detector service, debug overlays, and domain models.
   - `lib/src/features/session/` — timer flow and decision prep UI.
+- `server/` — FastAPI backend scaffold for valuation/listing/agent flows.
+  - `app/main.py` — API entrypoint and route registration.
+  - `app/api/routes/` — launch modules (`analysis`, `valuation`, `listing_drafts`, `marketplace_ebay`, `public_listings`, `mcp`, `a2a`, `user_data`).
+  - `tests/` — starter API tests.
 
 ## Getting Started
 
@@ -76,3 +81,23 @@ flutter test
 - Replace the mock detection flow with the real tensor preprocessing + interpreter call.
 - Add decision cards + four-box actions linked to the timer progress.
 - Persist session metadata locally so returning users can view their declutter history.
+
+## Backend (Scaffold)
+
+To run the backend scaffold locally:
+
+```bash
+cd server
+python -m venv .venv
+source .venv/bin/activate
+pip install -e .[dev]
+uvicorn app.main:app --reload
+```
+
+Run backend tests:
+
+```bash
+cd server
+source .venv/bin/activate
+pytest
+```
