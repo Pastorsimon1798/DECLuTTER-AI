@@ -78,6 +78,12 @@ Protected session endpoints:
 - `POST /sessions/{session_id}/items` — add a detected item and persist valuation + listing draft.
 - `POST /sessions/{session_id}/decisions` — record keep/donate/trash/recycle/relocate/maybe/sell decisions.
 - `GET /sessions/{session_id}` — retrieve durable session state and money-on-the-table totals.
+- `POST /sessions/{session_id}/items/{item_id}/public-listing` — generate a standalone HTML listing page for users who do not want marketplace publishing.
+
+Public listing endpoints:
+
+- `GET /public/listings/{listing_id}` — buyer-readable standalone HTML page.
+- `GET /public/listings/{listing_id}/packet` — JSON packet for agents or exports.
 
 ## Same-day launch gate
 

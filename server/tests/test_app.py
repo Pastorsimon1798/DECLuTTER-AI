@@ -349,10 +349,10 @@ def test_marketplace_publish_and_export_flow() -> None:
     assert 'Vintage Camera - Good' in export_body['content']
 
 
-def test_public_listing_does_not_require_auth() -> None:
+def test_public_listing_unknown_id_does_not_require_auth() -> None:
     response = client.get('/public/listings/demo-listing')
-    assert response.status_code == 200
-    assert response.json()['listing_id'] == 'demo-listing'
+    assert response.status_code == 404
+    assert response.json()['detail'] == 'Public listing not found.'
 
 
 
@@ -530,3 +530,52 @@ def test_cash_to_clear_rejects_decision_for_unknown_item(tmp_path: Path) -> None
 
     assert response.status_code == 404
     assert response.json()['detail'] == 'Item not found for this session.'
+
+
+def test_cash_to_clear_can_publish_standalone_html_listing_page(tmp_path: Path) -> None:
+    _set_auth_mode('scaffold')
+    os.environ['DECLUTTER_SESSION_DB_PATH'] = str(tmp_path / 'sessions.sqlite3')
+    from api.routes import sessions
+    from api.routes import public_listings
+
+    sessions.get_cash_to_clear_service.cache_clear()
+    public_listings.get_public_listing_service.cache_clear()
+
+    create = client.post('/sessions', headers=VALID_HEADERS, json={})
+    assert create.status_code == 200
+    session_id = create.json()['session_id']
+
+    add_item = client.post(
+        f'/sessions/{session_id}/items',
+        headers=VALID_HEADERS,
+        json={'label': 'electronics', 'condition': 'good'},
+    )
+    assert add_item.status_code == 200
+    item = add_item.json()
+
+    publish = client.post(
+        f"/sessions/{session_id}/items/{item['item_id']}/public-listing",
+        headers=VALID_HEADERS,
+    )
+    assert publish.status_code == 200
+    public_listing = publish.json()
+    assert public_listing['listing_id'].startswith('pub_')
+    assert public_listing['public_url'] == f"/public/listings/{public_listing['listing_id']}"
+    assert public_listing['title'] == item['listing_draft']['title']
+
+    html = client.get(public_listing['public_url'])
+    assert html.status_code == 200
+    assert html.headers['content-type'].startswith('text/html')
+    assert 'Electronics - Good' in html.text
+    assert 'Consumer Electronics' in html.text
+    assert '<script' not in html.text.lower()
+
+    packet = client.get(f"/public/listings/{public_listing['listing_id']}/packet")
+    assert packet.status_code == 200
+    assert packet.json()['listing_id'] == public_listing['listing_id']
+    assert packet.json()['price_usd'] == item['listing_draft']['price_usd']
+
+
+def test_public_listing_unknown_id_returns_404() -> None:
+    response = client.get('/public/listings/pub_missing')
+    assert response.status_code == 404
