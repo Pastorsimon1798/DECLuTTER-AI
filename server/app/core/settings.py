@@ -22,21 +22,63 @@ class RuntimeReadiness:
 
 
 class Settings:
+    _PLACEHOLDER_VALUES = {
+        "...",
+        "bucket",
+        "demo-project",
+        "id",
+        "launch-model-provider",
+        "mock-model",
+        "secret",
+        "your-ebay-client-id",
+        "your-ebay-client-secret",
+        "your-firebase-project-id",
+        "your-private-upload-bucket",
+    }
+    _PLACEHOLDER_PREFIXES = (
+        "replace-with-",
+        "todo-",
+        "your-",
+    )
+
     @staticmethod
     def readiness() -> RuntimeReadiness:
         return RuntimeReadiness(
-            firebase_admin_configured=bool(os.getenv("FIREBASE_PROJECT_ID")),
+            firebase_admin_configured=Settings._configured_env("FIREBASE_PROJECT_ID"),
             cloud_storage_configured=Settings._cloud_storage_configured(),
-            multimodal_model_configured=bool(os.getenv("DECLUTTER_MODEL_PROVIDER")),
+            multimodal_model_configured=Settings._configured_env(
+                "DECLUTTER_MODEL_PROVIDER"
+            ),
             ebay_api_configured=bool(
-                os.getenv("EBAY_CLIENT_ID") and os.getenv("EBAY_CLIENT_SECRET")
+                Settings._configured_env("EBAY_CLIENT_ID")
+                and Settings._configured_env("EBAY_CLIENT_SECRET")
             ),
         )
 
     @staticmethod
     def _cloud_storage_configured() -> bool:
         storage_backend = os.getenv("DECLUTTER_STORAGE_BACKEND", "local").strip().lower()
-        return storage_backend == "s3" and bool(os.getenv("DECLUTTER_S3_BUCKET"))
+        return storage_backend == "s3" and Settings._configured_env(
+            "DECLUTTER_S3_BUCKET"
+        )
+
+    @staticmethod
+    def _configured_env(name: str) -> bool:
+        value = os.getenv(name)
+        if value is None:
+            return False
+
+        normalized = value.strip().lower()
+        if not normalized:
+            return False
+
+        if normalized in Settings._PLACEHOLDER_VALUES:
+            return False
+
+        if normalized.startswith(Settings._PLACEHOLDER_PREFIXES):
+            return False
+
+        return "example" not in normalized and "placeholder" not in normalized
 
     @staticmethod
     def cors_allow_origins() -> list[str]:

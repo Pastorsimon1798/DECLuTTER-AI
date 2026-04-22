@@ -119,4 +119,5 @@ pytest
 For same-day backend launch/deploy steps, see:
 
 - `server/README.md` — backend environment profiles, Docker build, and smoke checks.
+- `server/deploy/hostinger-vps/` — Hostinger VPS Docker Compose + Caddy deploy bundle.
 - `docs/launch/SAME_DAY_LAUNCH_CHECKLIST.md` — private demo vs public production gate.

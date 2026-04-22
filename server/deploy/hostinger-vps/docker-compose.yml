@@ -1,0 +1,37 @@
+services:
+  declutter-api:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    image: declutter-ai-server:hostinger
+    restart: unless-stopped
+    env_file:
+      - ./env.hostinger
+    environment:
+      PORT: "8080"
+      DECLUTTER_SESSION_DB_PATH: /data/declutter_ai_sessions.sqlite3
+      DECLUTTER_UPLOAD_DIR: /data/uploads
+    volumes:
+      - declutter_data:/data
+    expose:
+      - "8080"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - declutter-api
+    environment:
+      DECLUTTER_PUBLIC_HOST: ${DECLUTTER_PUBLIC_HOST:?Set DECLUTTER_PUBLIC_HOST in env.hostinger}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_config:
+  caddy_data:
+  declutter_data:

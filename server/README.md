@@ -33,6 +33,24 @@ python scripts/smoke_backend.py --url http://127.0.0.1:8080
 
 The container installs the `prod` Python extra so strict Firebase verification and S3 storage imports are available in deployed environments.
 
+## Hostinger VPS deploy bundle
+
+For the Hostinger VPS path, use the Docker Compose + Caddy bundle in:
+
+```text
+server/deploy/hostinger-vps/
+```
+
+It provides:
+
+- `docker-compose.yml` for the backend container and HTTPS reverse proxy.
+- `env.example` as the VPS-only secret template.
+- `smoke.sh` for public URL health checks.
+
+The current Hostinger MCP integration can inspect/create hosting resources, but
+the visible tool surface does not expose direct VPS SSH/container deployment.
+Use standard VPS SSH plus this bundle for backend launch.
+
 ## Environment profiles
 
 ### Public production profile
@@ -97,6 +115,10 @@ Before sharing the backend URL, verify:
 4. CORS contains only the launch frontend origins.
 5. Protected routes reject missing auth headers.
 6. No real secrets are committed; use host secrets/env vars.
+
+Template values from `.env.example` and `server/deploy/hostinger-vps/env.example`
+are intentionally rejected by readiness checks. A container started with
+placeholder values must not report production-ready.
 
 ## Current scaffold limitations
 

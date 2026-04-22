@@ -101,13 +101,13 @@ def test_readiness_defaults_to_not_ready() -> None:
 
 
 def test_readiness_can_report_ready_when_all_env_present() -> None:
-    os.environ['FIREBASE_PROJECT_ID'] = 'demo-project'
+    os.environ['FIREBASE_PROJECT_ID'] = 'declutter-prod-123'
     os.environ['DECLUTTER_STORAGE_BACKEND'] = 's3'
-    os.environ['DECLUTTER_S3_BUCKET'] = 'bucket'
+    os.environ['DECLUTTER_S3_BUCKET'] = 'declutter-prod-uploads'
     os.environ.pop('DECLUTTER_STORAGE_BUCKET', None)
-    os.environ['DECLUTTER_MODEL_PROVIDER'] = 'mock-model'
-    os.environ['EBAY_CLIENT_ID'] = 'id'
-    os.environ['EBAY_CLIENT_SECRET'] = 'secret'
+    os.environ['DECLUTTER_MODEL_PROVIDER'] = 'openai-gpt-5-4'
+    os.environ['EBAY_CLIENT_ID'] = 'declutter-ebay-client-123'
+    os.environ['EBAY_CLIENT_SECRET'] = 'prod-ebay-secret-abc123'
 
     response = client.get('/health/readiness')
     assert response.status_code == 200
@@ -115,14 +115,32 @@ def test_readiness_can_report_ready_when_all_env_present() -> None:
     assert body['ready_for_production'] is True
 
 
+def test_readiness_rejects_env_example_placeholders() -> None:
+    os.environ['FIREBASE_PROJECT_ID'] = 'your-firebase-project-id'
+    os.environ['DECLUTTER_STORAGE_BACKEND'] = 's3'
+    os.environ['DECLUTTER_S3_BUCKET'] = 'your-private-upload-bucket'
+    os.environ['DECLUTTER_MODEL_PROVIDER'] = 'launch-model-provider'
+    os.environ['EBAY_CLIENT_ID'] = 'your-ebay-client-id'
+    os.environ['EBAY_CLIENT_SECRET'] = 'your-ebay-client-secret'
+
+    response = client.get('/health/readiness')
+    assert response.status_code == 200
+    body = response.json()
+    assert body['ready_for_production'] is False
+    assert body['checks']['firebase_admin_configured'] is False
+    assert body['checks']['cloud_storage_configured'] is False
+    assert body['checks']['multimodal_model_configured'] is False
+    assert body['checks']['ebay_api_configured'] is False
+
+
 def test_readiness_ignores_legacy_storage_bucket_without_s3_config() -> None:
-    os.environ['FIREBASE_PROJECT_ID'] = 'demo-project'
+    os.environ['FIREBASE_PROJECT_ID'] = 'declutter-prod-123'
     os.environ.pop('DECLUTTER_STORAGE_BACKEND', None)
     os.environ.pop('DECLUTTER_S3_BUCKET', None)
     os.environ['DECLUTTER_STORAGE_BUCKET'] = 'legacy-bucket'
-    os.environ['DECLUTTER_MODEL_PROVIDER'] = 'mock-model'
-    os.environ['EBAY_CLIENT_ID'] = 'id'
-    os.environ['EBAY_CLIENT_SECRET'] = 'secret'
+    os.environ['DECLUTTER_MODEL_PROVIDER'] = 'openai-gpt-5-4'
+    os.environ['EBAY_CLIENT_ID'] = 'declutter-ebay-client-123'
+    os.environ['EBAY_CLIENT_SECRET'] = 'prod-ebay-secret-abc123'
 
     response = client.get('/health/readiness')
     assert response.status_code == 200

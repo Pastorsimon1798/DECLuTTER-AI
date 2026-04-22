@@ -30,10 +30,11 @@ This file tracks implementation progress against `DECLUTTER_AI_2026_LAUNCH_PLAN_
 - ✅ Standalone listing fallback: users can generate public HTML listing pages without eBay or marketplace publishing.
 - ✅ Flutter standalone listing page starter: synced sprint groups can request and display public listing-page links.
 - ✅ Session summary/history: backend session list + summary endpoints and Flutter sprint summary card.
+- ✅ Hostinger VPS deploy handoff: Docker Compose + Caddy bundle, VPS env template, and public URL smoke script.
 
 ## Next implementation steps
 
-1. Ops: deploy the backend container using `server/.env.example` as the host-secret template.
+1. Ops: deploy the backend container on the Hostinger VPS using `server/deploy/hostinger-vps/`.
 2. WP3: provision Firebase Admin credentials + production token validation smoke tests.
 3. WP4: replace local signed-upload stub with cloud object storage + scanner integration.
 4. WP5: replace mock structured adapter with real multimodal model inference + eval set.

@@ -57,7 +57,26 @@ curl -fsS http://127.0.0.1:8080/health/
 python scripts/smoke_backend.py --url http://127.0.0.1:8080
 ```
 
-## 4. Launch blockers to resolve before calling this production
+## 4. Hostinger VPS deploy path
+
+Use this when the backend should run on a Hostinger VPS:
+
+```bash
+cd server/deploy/hostinger-vps
+cp env.example env.hostinger
+# Fill env.hostinger on the VPS only; do not commit it.
+docker compose --env-file env.hostinger up -d --build
+./smoke.sh https://api.your-domain.example
+```
+
+Prerequisites:
+
+- DNS `A` record for the API hostname points to the VPS public IP.
+- Ports `80` and `443` are reachable so Caddy can issue HTTPS certificates.
+- `env.hostinger` uses strict auth for public URLs, or scaffold auth only behind
+  a private access gate.
+
+## 5. Launch blockers to resolve before calling this production
 
 - Replace deterministic mock analysis with the selected launch model/provider path.
 - Configure real Firebase Admin credentials and App Check for strict mode.
@@ -65,7 +84,7 @@ python scripts/smoke_backend.py --url http://127.0.0.1:8080
 - Replace mock eBay publishing with the official eBay OAuth/Sell API flow.
 - Add deploy-host health gates that check `/health/readiness`.
 
-## 5. What is safe to say today
+## 6. What is safe to say today
 
 - Safe: “Backend scaffold is deployable and review-gated.”
 - Safe: “Demo mode can show the Cash-to-Clear flow with deterministic starter adapters.”
