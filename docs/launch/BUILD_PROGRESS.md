@@ -14,12 +14,15 @@ This file tracks implementation progress against `DECLUTTER_AI_2026_LAUNCH_PLAN_
   - `mcp`
   - `a2a`
   - `user_data`
-- ✅ Starter backend tests added for health and analysis route.
+- ✅ WP2 starter backend tests added for health and analysis route.
+- ✅ WP3 (starter): Firebase Auth + App Check request protection added for private routes.
+- ✅ WP3 (hardening): strict-mode runtime path now uses Firebase Admin SDK when configured.
+- ✅ WP4 (starter): secure image intake endpoint with EXIF stripping and pluggable storage adapter abstraction (local + s3 backend wiring).
 
 ## Next implementation steps
 
-1. WP3: Firebase Auth + App Check middleware/verification.
-2. WP4: secure image intake + EXIF stripping + storage adapter.
+1. WP3: provision Firebase Admin credentials + production token validation smoke tests.
+2. WP4: signed URL flow + malware scanning hooks + end-to-end cloud credential validation.
 3. WP5: AI item analysis adapter with structured outputs.
 4. WP6: valuation service with eBay comps + confidence scoring.
 5. WP8/WP9: listing generation and eBay publish flow.
