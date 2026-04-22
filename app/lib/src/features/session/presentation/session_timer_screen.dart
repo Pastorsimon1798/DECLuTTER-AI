@@ -38,15 +38,25 @@ class _SessionTimerScreenState extends State<SessionTimerScreen> {
   double? _moneyOnTableHighUsd;
   bool _isSyncingCashToClear = false;
   String? _cashToClearSyncMessage;
+  bool _ownsCashToClearApi = false;
 
   @override
   void initState() {
     super.initState();
+    _ownsCashToClearApi = widget.cashToClearApi == null;
     _cashToClearApi = widget.cashToClearApi ?? CashToClearApiClient.fromEnvironment();
     if (widget.groupedResult.hasGroups) {
       _selectedGroupId = widget.groupedResult.primaryGroup?.id;
     }
     _bootstrapCashToClearSession();
+  }
+
+  @override
+  void dispose() {
+    if (_ownsCashToClearApi) {
+      _cashToClearApi.dispose();
+    }
+    super.dispose();
   }
 
   Future<void> _bootstrapCashToClearSession() async {
@@ -65,13 +75,19 @@ class _SessionTimerScreenState extends State<SessionTimerScreen> {
     try {
       final session = await _cashToClearApi.createSession();
       final remoteItems = <String, CashToClearItemDto>{};
-      for (final group in widget.groupedResult.groups) {
-        final remoteItem = await _cashToClearApi.addItem(
-          sessionId: session.sessionId,
-          label: group.displayLabel,
-          condition: 'unknown',
-        );
-        remoteItems[group.id] = remoteItem;
+      final groups = widget.groupedResult.groups;
+      final syncedItems = await Future.wait(
+        groups.map(
+          (group) => _cashToClearApi.addItem(
+            sessionId: session.sessionId,
+            label: group.displayLabel,
+            condition: 'unknown',
+          ),
+        ),
+      );
+
+      for (var index = 0; index < groups.length; index++) {
+        remoteItems[groups[index].id] = syncedItems[index];
       }
 
       final refreshed = await _cashToClearApi.getSession(session.sessionId);

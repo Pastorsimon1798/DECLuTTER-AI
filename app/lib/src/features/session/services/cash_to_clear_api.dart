@@ -25,7 +25,10 @@ class CashToClearApiClient {
   })  : baseUrl = _normalizeBaseUrl(baseUrl),
         _idToken = idToken,
         _appCheckToken = appCheckToken,
-        _httpClient = httpClient ?? HttpClient();
+        _httpClient = httpClient ?? HttpClient() {
+    _httpClient.connectionTimeout = const Duration(seconds: 10);
+    _httpClient.idleTimeout = const Duration(seconds: 30);
+  }
 
   factory CashToClearApiClient.fromEnvironment() {
     return CashToClearApiClient(
@@ -42,6 +45,10 @@ class CashToClearApiClient {
 
   bool get isConfigured =>
       baseUrl.isNotEmpty && _idToken.isNotEmpty && _appCheckToken.isNotEmpty;
+
+  void dispose() {
+    _httpClient.close();
+  }
 
   Future<CashToClearSessionDto> createSession({String? imageStorageKey}) async {
     final response = await _requestJson(
