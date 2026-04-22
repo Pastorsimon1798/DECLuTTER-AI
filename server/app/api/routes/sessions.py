@@ -4,6 +4,8 @@ from functools import lru_cache
 
 from fastapi import APIRouter, HTTPException, Request, status
 
+from schemas.public_listing import PublicListingResponse
+
 from schemas.session import (
     CashToClearSessionResponse,
     SessionCreateRequest,
@@ -52,6 +54,25 @@ def add_item(
 ) -> SessionItemResponse:
     try:
         return get_cash_to_clear_service().add_item(_owner_uid(request), session_id, payload)
+    except KeyError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc).strip("'"),
+        ) from exc
+
+
+@router.post('/{session_id}/items/{item_id}/public-listing', response_model=PublicListingResponse)
+def create_public_listing(
+    request: Request,
+    session_id: str,
+    item_id: str,
+) -> PublicListingResponse:
+    try:
+        return get_cash_to_clear_service().create_public_listing(
+            _owner_uid(request),
+            session_id,
+            item_id,
+        )
     except KeyError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

@@ -69,5 +69,6 @@ python scripts/smoke_backend.py --url http://127.0.0.1:8080
 
 - Safe: “Backend scaffold is deployable and review-gated.”
 - Safe: “Demo mode can show the Cash-to-Clear flow with deterministic starter adapters.”
+- Safe: “Users can generate standalone listing HTML pages when they do not want marketplace publishing.”
 - Not safe yet: “Fully production marketplace publishing is live.”
 - Not safe yet: “Valuations are real marketplace-backed estimates.”
