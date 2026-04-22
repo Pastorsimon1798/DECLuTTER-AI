@@ -24,6 +24,7 @@ This file tracks implementation progress against `DECLUTTER_AI_2026_LAUNCH_PLAN_
 - ✅ WP8/WP9 (starter): listing draft generation + mock eBay publish/export flow.
 - ✅ Launch ops helper: `/health/readiness` endpoint reports production dependency readiness from environment.
 - ✅ Same-day launch hardening: backend CORS config, app factory, Dockerfile, env template, CI, and launch checklist.
+- ✅ Same-day smoke surface: public root page, `/launch/status`, and `server/scripts/smoke_backend.py`.
 
 ## Next implementation steps
 

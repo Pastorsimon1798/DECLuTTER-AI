@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from api.routes.a2a import router as a2a_router
 from api.routes.analysis import router as analysis_router
 from api.routes.health import router as health_router
+from api.routes.launch import router as launch_router
 from api.routes.listing_drafts import router as listing_router
 from api.routes.marketplace_ebay import router as ebay_router
 from api.routes.mcp import router as mcp_router
@@ -28,6 +29,7 @@ def create_app() -> FastAPI:
         )
 
     api.include_router(health_router)
+    api.include_router(launch_router)
     api.include_router(public_listings_router)
 
     protected = [Depends(require_firebase_protection)]

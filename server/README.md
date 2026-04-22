@@ -18,6 +18,7 @@ Health checks:
 ```bash
 curl http://127.0.0.1:8000/health/
 curl http://127.0.0.1:8000/health/readiness
+python scripts/smoke_backend.py --url http://127.0.0.1:8000
 ```
 
 ## Container build
@@ -27,6 +28,7 @@ cd server
 docker build -t declutter-ai-server:launch .
 docker run --rm -p 8080:8080 --env-file .env declutter-ai-server:launch
 curl http://127.0.0.1:8080/health/
+python scripts/smoke_backend.py --url http://127.0.0.1:8080
 ```
 
 The container installs the `prod` Python extra so strict Firebase verification and S3 storage imports are available in deployed environments.

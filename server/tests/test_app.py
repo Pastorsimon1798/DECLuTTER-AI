@@ -52,6 +52,25 @@ def test_health() -> None:
     assert response.json()['status'] == 'ok'
 
 
+def test_root_landing_page_links_launch_surfaces() -> None:
+    response = client.get('/')
+    assert response.status_code == 200
+    assert response.headers['content-type'].startswith('text/html')
+    assert 'DECLuTTER-AI' in response.text
+    assert '/docs' in response.text
+    assert '/health/readiness' in response.text
+
+
+def test_launch_status_reports_backend_scaffold_limitations() -> None:
+    response = client.get('/launch/status')
+    assert response.status_code == 200
+    body = response.json()
+    assert body['service'] == 'DECLuTTER-AI API'
+    assert body['launch_profile'] == 'backend_scaffold'
+    assert body['production_ready'] is False
+    assert 'deterministic starter adapters' in ' '.join(body['limitations'])
+
+
 
 def test_readiness_defaults_to_not_ready() -> None:
     for key in [

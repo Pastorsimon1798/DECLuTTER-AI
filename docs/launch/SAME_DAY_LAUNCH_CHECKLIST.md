@@ -42,6 +42,7 @@ In another terminal:
 ```bash
 curl -fsS http://127.0.0.1:8080/health/
 curl -fsS http://127.0.0.1:8080/health/readiness
+python scripts/smoke_backend.py --url http://127.0.0.1:8080
 ```
 
 ## 3. Container smoke commands
@@ -53,6 +54,7 @@ cp .env.example .env
 docker build -t declutter-ai-server:launch .
 docker run --rm --env-file .env -p 8080:8080 declutter-ai-server:launch
 curl -fsS http://127.0.0.1:8080/health/
+python scripts/smoke_backend.py --url http://127.0.0.1:8080
 ```
 
 ## 4. Launch blockers to resolve before calling this production
