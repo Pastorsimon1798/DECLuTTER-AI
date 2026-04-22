@@ -124,7 +124,10 @@ class Settings:
         if "example" in lowered or "placeholder" in lowered:
             return False
 
-        return not lowered.startswith("/tmp/")
+        return lowered not in {
+            "/tmp/declutter_ai_uploads",
+            "/tmp/declutter_ai_sessions.sqlite3",
+        }
 
     @staticmethod
     def cors_allow_origins() -> list[str]:
