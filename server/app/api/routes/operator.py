@@ -125,12 +125,21 @@ async def _run_sprint(
     store: CashToClearSessionStore,
 ) -> OperatorSprintResult:
     intake = await intake_service.intake(image)
-    analysis = analysis_adapter.run(intake.storage_key)
-    detected = analysis.items[0] if analysis.items else None
-    if detected is None and not label_override.strip():
+    manual_label = label_override.strip()
+    try:
+        analysis = analysis_adapter.run(intake.storage_key)
+        detected = analysis.items[0] if analysis.items else None
+        engine = analysis.engine
+    except RuntimeError:
+        if not manual_label:
+            raise
+        detected = None
+        engine = 'manual-override'
+
+    if detected is None and not manual_label:
         raise RuntimeError('No detected items were returned. Add a manual label and retry.')
 
-    label = label_override.strip() or detected.label
+    label = manual_label or detected.label
     confidence = detected.confidence if detected is not None else 1.0
     session = store.create_session(
         OPERATOR_OWNER_UID,
@@ -155,7 +164,7 @@ async def _run_sprint(
         item_id=item.item_id,
         listing_id=listing.listing_id,
         public_listing_url=_external_path(request, listing.public_url),
-        engine=analysis.engine,
+        engine=engine,
         estimated_low_usd=item.valuation.estimated_low_usd,
         estimated_high_usd=item.valuation.estimated_high_usd,
         price_usd=listing.price_usd,
