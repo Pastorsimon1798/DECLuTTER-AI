@@ -107,35 +107,91 @@ class OpenAICompatibleAnalysisAdapter:
         self.transport = transport or self._post_json
 
     def run(self, image_storage_key: str) -> AnalysisResult:
-        payload = self._build_payload(image_storage_key)
         headers = {"Content-Type": "application/json"}
         if self.api_key and self.api_key.strip():
             headers["Authorization"] = f"Bearer {self.api_key.strip()}"
 
-        response = self.transport(
-            f"{self.base_url}/chat/completions",
-            payload,
-            headers,
-            self.timeout_seconds,
-        )
-        items = self._parse_items(response)
+        last_error: RuntimeError | None = None
+        for payload in self._build_payloads(image_storage_key):
+            try:
+                response = self.transport(
+                    f"{self.base_url}/chat/completions",
+                    payload,
+                    headers,
+                    self.timeout_seconds,
+                )
+                items = self._parse_items(response)
+                break
+            except RuntimeError as exc:
+                last_error = exc
+        else:
+            raise last_error or RuntimeError(
+                "Inference provider returned no usable response."
+            )
+
         return AnalysisResult(
             items=items,
             engine=f"openai-compatible:{self.model}",
             structured_output_version="2026-04-home-inference",
         )
 
-    def _build_payload(self, image_storage_key: str) -> dict[str, Any]:
-        user_content: list[dict[str, Any]] = [
-            {
-                "type": "text",
-                "text": (
+    def _build_payloads(self, image_storage_key: str) -> list[dict[str, Any]]:
+        return [
+            self._build_payload(
+                image_storage_key,
+                system_prompt=(
+                    "You are DECLuTTER-AI's item detection adapter. "
+                    "Return compact valid JSON only. Do not include markdown."
+                ),
+                user_prompt=(
                     "Analyze this decluttering image and return ONLY JSON with "
                     "an items array. Each item must have label and confidence "
                     "between 0 and 1. Example: "
                     '{"items":[{"label":"book","confidence":0.82}]} '
                     f"Storage key: {image_storage_key}"
                 ),
+                include_response_format=True,
+            ),
+            self._build_payload(
+                image_storage_key,
+                system_prompt=(
+                    "You identify the visible items in DECLuTTER-AI photos. "
+                    "Reply only with a compact JSON object containing an "
+                    '"items" array of {label, confidence}.'
+                ),
+                user_prompt=(
+                    "Identify the visible items in this image. Reply only with "
+                    'JSON like {"items":[{"label":"book","confidence":0.82}]}.'
+                ),
+                include_response_format=True,
+            ),
+            self._build_payload(
+                image_storage_key,
+                system_prompt=(
+                    "You identify the visible items in DECLuTTER-AI photos. "
+                    "Reply only with a compact JSON object containing an "
+                    '"items" array of {label, confidence}.'
+                ),
+                user_prompt=(
+                    "Identify the visible items in this image. Reply only with "
+                    'JSON like {"items":[{"label":"book","confidence":0.82}]}.'
+                ),
+                include_response_format=False,
+            ),
+        ]
+
+    def _build_payload(
+        self,
+        image_storage_key: str,
+        *,
+        system_prompt: str,
+        user_prompt: str,
+        include_response_format: bool,
+    ) -> dict[str, Any]:
+        user_content: list[dict[str, Any]] = [
+            {
+                "type": "text",
+                "text": user_prompt,
             }
         ]
 
@@ -143,22 +199,18 @@ class OpenAICompatibleAnalysisAdapter:
         if image_url:
             user_content.append({"type": "image_url", "image_url": {"url": image_url}})
 
-        return {
+        payload: dict[str, Any] = {
             "model": self.model,
             "messages": [
-                {
-                    "role": "system",
-                    "content": (
-                        "You are DECLuTTER-AI's item detection adapter. "
-                        "Return compact valid JSON only. Do not include markdown."
-                    ),
-                },
+                {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_content},
             ],
             "temperature": 0,
             "max_tokens": self.max_tokens,
-            "response_format": {"type": "text"},
         }
+        if include_response_format:
+            payload["response_format"] = {"type": "text"}
+        return payload
 
     def _image_data_url(self, image_storage_key: str) -> str | None:
         candidate = (self.upload_dir / image_storage_key).resolve()
@@ -191,6 +243,8 @@ class OpenAICompatibleAnalysisAdapter:
         content = message.get("content")
         if not isinstance(content, str):
             raise RuntimeError("Inference provider returned no message content.")
+        if not content.strip():
+            raise RuntimeError("Inference provider returned empty message content.")
 
         try:
             parsed = json.loads(_extract_json_object(content))

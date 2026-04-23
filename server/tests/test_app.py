@@ -456,6 +456,44 @@ def test_openai_compatible_analysis_adapter_parses_fenced_json() -> None:
     assert result.items[0].confidence == 0.9
 
 
+def test_openai_compatible_analysis_adapter_retries_with_fallback_prompt() -> None:
+    calls: list[dict[str, object]] = []
+
+    def flaky_transport(
+        _url: str,
+        payload: dict[str, object],
+        _headers: dict[str, str],
+        _timeout: float,
+    ) -> dict[str, object]:
+        calls.append(payload)
+        if len(calls) == 1:
+            return {'choices': [{'message': {'content': ''}}]}
+        return {
+            'choices': [
+                {
+                    'message': {
+                        'content': '```json\n{"items":[{"label":"camera","confidence":0.88}]}\n```'
+                    }
+                }
+            ]
+        }
+
+    adapter = OpenAICompatibleAnalysisAdapter(
+        base_url='http://host.docker.internal:1234/v1',
+        model='local-vision-model',
+        transport=flaky_transport,
+    )
+
+    result = adapter.run('intake/missing.jpg')
+
+    assert result.items[0].label == 'camera'
+    assert len(calls) == 2
+    first_messages = calls[0]['messages']  # type: ignore[index]
+    second_messages = calls[1]['messages']  # type: ignore[index]
+    assert first_messages[0]['content'].endswith('Do not include markdown.')
+    assert 'Identify the visible items in this image' in second_messages[1]['content'][0]['text']
+
+
 def test_openai_compatible_analysis_adapter_rejects_empty_choices() -> None:
     adapter = OpenAICompatibleAnalysisAdapter(
         base_url='http://host.docker.internal:1234/v1',
