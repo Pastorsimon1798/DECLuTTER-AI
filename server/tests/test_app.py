@@ -114,7 +114,8 @@ def test_root_landing_page_links_launch_surfaces() -> None:
     assert response.status_code == 200
     assert response.headers['content-type'].startswith('text/html')
     assert 'DECLuTTER-AI' in response.text
-    assert '/docs' in response.text
+    assert 'Turn one photo into a live listing page' in response.text
+    assert '/app' in response.text
     assert '/health/readiness' in response.text
 
 
@@ -124,14 +125,14 @@ def test_launch_status_reports_backend_scaffold_limitations() -> None:
     assert response.status_code == 200
     body = response.json()
     assert body['service'] == 'DECLuTTER-AI API'
-    assert body['launch_profile'] == 'backend_scaffold'
+    assert body['launch_profile'] == 'seller_front_door_beta'
     assert body['self_hosted_mvp_ready'] is False
     assert body['checks']['firebase_admin_configured'] is False
     assert body['checks']['cloud_storage_configured'] is False
     assert body['checks']['multimodal_model_configured'] is False
     assert body['checks']['ebay_api_configured'] is False
     assert body['production_ready'] == all(body['checks'].values())
-    assert 'deterministic starter adapters' in ' '.join(body['limitations'])
+    assert 'public listing pages now provide the promotable front door' in ' '.join(body['limitations'])
 
 
 
@@ -864,7 +865,7 @@ def test_cash_to_clear_can_publish_standalone_html_listing_page(tmp_path: Path) 
     assert publish.status_code == 200
     public_listing = publish.json()
     assert public_listing['listing_id'].startswith('pub_')
-    assert public_listing['public_url'] == f"/public/listings/{public_listing['listing_id']}"
+    assert public_listing['public_url'] == f"/listings/{public_listing['listing_id']}"
     assert public_listing['title'] == item['listing_draft']['title']
 
     html = client.get(public_listing['public_url'])
@@ -1044,7 +1045,7 @@ def test_operator_sprint_runs_without_exposing_bearer_token(
         assert response.status_code == 200
         assert 'Sprint complete' in response.text
         assert 'Camera' in response.text or 'camera' in response.text
-        assert 'https://kyanitelabs.tech/declutter/public/listings/' in response.text
+        assert 'https://kyanitelabs.tech/declutter/listings/' in response.text
         assert 'operator-secret' not in response.text
     finally:
         operator.get_operator_image_intake_service.cache_clear()
@@ -1087,7 +1088,93 @@ def test_operator_sprint_uses_manual_label_when_inference_fails(
         assert response.status_code == 200
         assert 'Sprint complete' in response.text
         assert '100% confidence' in response.text
-        assert 'https://kyanitelabs.tech/declutter/public/listings/' in response.text
+        assert 'https://kyanitelabs.tech/declutter/listings/' in response.text
+    finally:
+        operator.get_operator_image_intake_service.cache_clear()
+        if hasattr(operator.get_operator_analysis_adapter, 'cache_clear'):
+            operator.get_operator_analysis_adapter.cache_clear()
+        operator.get_operator_session_store.cache_clear()
+        public_listings.get_public_listing_service.cache_clear()
+
+
+def test_seller_app_home_renders_public_form() -> None:
+    response = client.get('/app')
+
+    assert response.status_code == 200
+    assert response.headers['content-type'].startswith('text/html')
+    assert 'Turn one photo into a listing page' in response.text
+    assert 'Create my listing page' in response.text
+
+
+def test_seller_app_sprint_creates_public_listing_without_basic_auth(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    from api.routes import operator, public_listings
+
+    monkeypatch.setenv('DECLUTTER_STORAGE_BACKEND', 'local')
+    monkeypatch.setenv('DECLUTTER_UPLOAD_DIR', str(tmp_path / 'uploads'))
+    monkeypatch.setenv('DECLUTTER_SESSION_DB_PATH', str(tmp_path / 'sessions.sqlite3'))
+    monkeypatch.setenv('DECLUTTER_ANALYSIS_PROVIDER', 'mock')
+    monkeypatch.setenv('DECLUTTER_PUBLIC_BASE_PATH', 'declutter')
+    operator.get_operator_image_intake_service.cache_clear()
+    operator.get_operator_analysis_adapter.cache_clear()
+    operator.get_operator_session_store.cache_clear()
+    public_listings.get_public_listing_service.cache_clear()
+
+    try:
+        response = client.post(
+            '/app/sprint',
+            data={'condition': 'good', 'label_override': 'camera'},
+            files={'image': ('input.jpg', _build_jpeg_with_exif(), 'image/jpeg')},
+            headers={'host': 'kyanitelabs.tech', 'x-forwarded-proto': 'https'},
+        )
+
+        assert response.status_code == 200
+        assert 'Sprint complete' in response.text
+        assert 'https://kyanitelabs.tech/declutter/listings/' in response.text
+        assert 'Open beta' in response.text
+    finally:
+        operator.get_operator_image_intake_service.cache_clear()
+        if hasattr(operator.get_operator_analysis_adapter, 'cache_clear'):
+            operator.get_operator_analysis_adapter.cache_clear()
+        operator.get_operator_session_store.cache_clear()
+        public_listings.get_public_listing_service.cache_clear()
+
+
+def test_public_listing_legacy_path_redirects_to_new_listing_path(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    from api.routes import operator, public_listings
+
+    monkeypatch.setenv('DECLUTTER_SHARED_ACCESS_TOKEN', 'operator-secret')
+    monkeypatch.setenv('DECLUTTER_STORAGE_BACKEND', 'local')
+    monkeypatch.setenv('DECLUTTER_UPLOAD_DIR', str(tmp_path / 'uploads'))
+    monkeypatch.setenv('DECLUTTER_SESSION_DB_PATH', str(tmp_path / 'sessions.sqlite3'))
+    monkeypatch.setenv('DECLUTTER_ANALYSIS_PROVIDER', 'mock')
+    operator.get_operator_image_intake_service.cache_clear()
+    operator.get_operator_analysis_adapter.cache_clear()
+    operator.get_operator_session_store.cache_clear()
+    public_listings.get_public_listing_service.cache_clear()
+
+    try:
+        create_response = client.post(
+            '/operator/sprint',
+            auth=('operator', 'operator-secret'),
+            data={'condition': 'good', 'label_override': 'camera'},
+            files={'image': ('input.jpg', _build_jpeg_with_exif(), 'image/jpeg')},
+            headers={'host': 'kyanitelabs.tech', 'x-forwarded-proto': 'https'},
+        )
+        listing_id = create_response.text.split('/listings/')[1].split('"')[0].split('<')[0]
+
+        legacy_response = client.get(
+            f'/public/listings/{listing_id}',
+            follow_redirects=False,
+        )
+
+        assert legacy_response.status_code == 307
+        assert legacy_response.headers['location'] == f'/listings/{listing_id}'
     finally:
         operator.get_operator_image_intake_service.cache_clear()
         if hasattr(operator.get_operator_analysis_adapter, 'cache_clear'):

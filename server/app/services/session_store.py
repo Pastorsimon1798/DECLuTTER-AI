@@ -223,7 +223,7 @@ class CashToClearSessionStore:
             SessionPublicListingSummary(
                 item_id=row['item_id'],
                 listing_id=row['listing_id'],
-                public_url=f"/public/listings/{row['listing_id']}",
+                public_url=f"/listings/{row['listing_id']}",
                 title=row['title'],
             )
             for row in rows
@@ -275,7 +275,7 @@ class CashToClearSessionStore:
             raise KeyError('Public listing not found.')
         return PublicListingResponse(
             listing_id=row['listing_id'],
-            public_url=f"/public/listings/{row['listing_id']}",
+            public_url=f"/listings/{row['listing_id']}",
             title=row['title'],
             description=row['description'],
             condition=row['condition'],
@@ -284,19 +284,44 @@ class CashToClearSessionStore:
             created_at=datetime.fromisoformat(row['created_at']),
         )
 
-    def render_public_listing_html(self, listing_id: str) -> str:
+    def list_recent_public_listings(self, limit: int = 6) -> list[PublicListingResponse]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT listing_id
+                FROM public_listings
+                ORDER BY created_at DESC
+                LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+        return [self.get_public_listing(row['listing_id']) for row in rows]
+
+    def render_public_listing_html(
+        self,
+        listing_id: str,
+        *,
+        canonical_url: str | None = None,
+    ) -> str:
         listing = self.get_public_listing(listing_id)
         title = escape(listing.title)
         description = escape(listing.description)
         condition = escape(listing.condition.title())
         category = escape(listing.category_hint)
         price = f'${listing.price_usd:.2f}'
+        canonical_tag = (
+            f'<link rel="canonical" href="{escape(canonical_url)}" />'
+            if canonical_url
+            else ''
+        )
         return f"""<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title} · DECLuTTER-AI Listing</title>
+    <meta name="description" content="{title} · condition {condition} · {price}. A standalone DECLuTTER-AI listing page." />
+    {canonical_tag}
     <style>
       body {{ font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; background: #f6f7fb; color: #172033; }}
       main {{ max-width: 760px; margin: 0 auto; padding: 32px 20px; }}

@@ -40,6 +40,36 @@ class OperatorSprintResult:
     price_usd: float
 
 
+@dataclass(frozen=True)
+class SprintPageConfig:
+    page_title: str
+    hero_eyebrow: str
+    hero_title: str
+    hero_lede: str
+    access_badge: str
+    access_badge_class: str
+    run_eyebrow: str
+    action_path: str
+    submit_label: str
+
+
+OPERATOR_PAGE_CONFIG = SprintPageConfig(
+    page_title='DECLuTTER-AI Operator',
+    hero_eyebrow='Private MVP cockpit',
+    hero_title='Cash-to-Clear Operator',
+    hero_lede=(
+        'Upload one photo, let the backend detect the item, create a session, '
+        'draft a listing, and produce a public listing URL. Secrets stay '
+        'server-side behind Basic auth.'
+    ),
+    access_badge='Locked',
+    access_badge_class='lock',
+    run_eyebrow='Run a sprint',
+    action_path='/operator/sprint',
+    submit_label='Run Cash-to-Clear sprint',
+)
+
+
 @lru_cache(maxsize=1)
 def get_operator_image_intake_service() -> ImageIntakeService:
     return ImageIntakeService(storage=create_storage_adapter_from_env())
@@ -87,7 +117,12 @@ def operator_home(
     request: Request,
     _credentials: HTTPBasicCredentials = Depends(_require_operator_auth),
 ) -> str:
-    return _render_page(request, result=None, error=None)
+    return render_sprint_page(
+        request,
+        result=None,
+        error=None,
+        config=OPERATOR_PAGE_CONFIG,
+    )
 
 
 @router.post('/sprint', response_class=HTMLResponse)
@@ -106,13 +141,19 @@ async def run_operator_sprint(
             image=image,
             condition=condition,
             label_override=label_override,
+            owner_uid=OPERATOR_OWNER_UID,
             intake_service=intake_service,
             analysis_adapter=get_operator_analysis_adapter(),
             store=store,
         )
-        return _render_page(request, result=result, error=None)
+        return render_sprint_page(request, result=result, error=None, config=OPERATOR_PAGE_CONFIG)
     except (RuntimeError, ValueError) as exc:
-        return _render_page(request, result=None, error=str(exc))
+        return render_sprint_page(
+            request,
+            result=None,
+            error=str(exc),
+            config=OPERATOR_PAGE_CONFIG,
+        )
 
 
 async def _run_sprint(
@@ -120,6 +161,7 @@ async def _run_sprint(
     image: UploadFile,
     condition: str,
     label_override: str,
+    owner_uid: str,
     intake_service: ImageIntakeService,
     analysis_adapter: MockStructuredAnalysisAdapter | OpenAICompatibleAnalysisAdapter,
     store: CashToClearSessionStore,
@@ -142,16 +184,16 @@ async def _run_sprint(
     label = manual_label or detected.label
     confidence = detected.confidence if detected is not None else 1.0
     session = store.create_session(
-        OPERATOR_OWNER_UID,
+        owner_uid,
         SessionCreateRequest(image_storage_key=intake.storage_key),
     )
     item = store.add_item(
-        OPERATOR_OWNER_UID,
+        owner_uid,
         session.session_id,
         SessionItemCreateRequest(label=label, condition=condition.strip() or 'unknown'),
     )
     listing = store.create_public_listing(
-        OPERATOR_OWNER_UID,
+        owner_uid,
         session.session_id,
         item.item_id,
     )
@@ -184,10 +226,12 @@ def _external_path(request: Request, internal_path: str) -> str:
     return f'{proto}://{host}{path}'
 
 
-def _render_page(
+def render_sprint_page(
     request: Request,
     result: OperatorSprintResult | None,
     error: str | None,
+    *,
+    config: SprintPageConfig,
 ) -> str:
     result_html = ''
     if error:
@@ -241,13 +285,15 @@ def _render_page(
         </section>
         '''
 
-    action = html.escape(_external_path(request, '/operator/sprint'))
+    action = html.escape(_external_path(request, config.action_path))
     return f'''<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>DECLuTTER-AI Operator</title>
+    <title>{html.escape(config.page_title)}</title>
+    <meta name="description" content="{html.escape(config.hero_lede)}" />
+    <link rel="canonical" href="{html.escape(_external_path(request, request.url.path))}" />
     <style>
       :root {{ color-scheme: light; --ink:#142033; --muted:#64748b; --line:#d8e0ee; --brand:#3157ff; --brand2:#7c3aed; --bg:#eef4ff; }}
       * {{ box-sizing: border-box; }}
@@ -295,12 +341,12 @@ def _render_page(
     <div class="shell">
       <section class="hero">
         <div class="hero-card">
-          <p class="eyebrow">Private MVP cockpit</p>
-          <h1>Cash-to-Clear Operator</h1>
-          <p class="lede">Upload one photo, let the backend detect the item, create a session, draft a listing, and produce a public listing URL. Secrets stay server-side behind Basic auth.</p>
+          <p class="eyebrow">{html.escape(config.hero_eyebrow)}</p>
+          <h1>{html.escape(config.hero_title)}</h1>
+          <p class="lede">{html.escape(config.hero_lede)}</p>
         </div>
         <aside class="status-card">
-          <div class="status-row"><span>Access</span><span class="badge lock">Locked</span></div>
+          <div class="status-row"><span>Access</span><span class="badge {html.escape(config.access_badge_class)}">{html.escape(config.access_badge)}</span></div>
           <div class="status-row"><span>Storage</span><span class="badge ok">VPS local</span></div>
           <div class="status-row"><span>Inference</span><span class="badge ok">Home model</span></div>
           <div class="status-row"><span>Output</span><span class="badge warn">Review before selling</span></div>
@@ -315,7 +361,7 @@ def _render_page(
           <div class="preview-card">Tip: use a clear, close-up photo of one item for the cleanest listing draft.</div>
         </aside>
         <main class="panel">
-          <p class="eyebrow">Run a sprint</p>
+          <p class="eyebrow">{html.escape(config.run_eyebrow)}</p>
           <form action="{action}" method="post" enctype="multipart/form-data">
             <label>Photo
               <input name="image" type="file" accept="image/jpeg,image/png,image/webp" required />
@@ -334,7 +380,7 @@ def _render_page(
               <input name="label_override" type="text" placeholder="e.g. camera, shoes, toy" />
               <span class="field-hint">Use this if the model sees the right object but names it poorly.</span>
             </label>
-            <button type="submit">Run Cash-to-Clear sprint</button>
+            <button type="submit">{html.escape(config.submit_label)}</button>
           </form>
           {result_html}
         </main>
