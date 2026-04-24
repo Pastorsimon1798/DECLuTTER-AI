@@ -31,12 +31,12 @@ class DetectionGrouper {
       );
 
     return [
-      for (var index = 0; index < entries.length; index++)
+      for (final entry in entries)
         DetectionGroup(
-          id: 'group_${index + 1}',
-          rawLabel: entries[index].value.first.label,
-          displayLabel: entries[index].value.first.displayLabel,
-          detections: List.unmodifiable(entries[index].value),
+          id: _normalizedLabel(entry.value.first.label).replaceAll(RegExp(r'[^a-z0-9]'), '_'),
+          rawLabel: entry.value.first.label,
+          displayLabel: entry.value.first.displayLabel,
+          detections: List.unmodifiable(entry.value),
         ),
     ];
   }

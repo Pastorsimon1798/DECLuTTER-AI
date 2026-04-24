@@ -16,14 +16,14 @@ class SessionCreateRequest(BaseModel):
 
 
 class SessionItemCreateRequest(BaseModel):
-    label: str = Field(min_length=1)
+    label: str = Field(min_length=1, max_length=120)
     condition: str = 'unknown'
 
 
 class SessionDecisionRequest(BaseModel):
     item_id: str = Field(min_length=1)
     decision: DecisionValue
-    note: str | None = None
+    note: str | None = Field(default=None, max_length=500)
 
 
 class SessionDecisionResponse(BaseModel):

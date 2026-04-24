@@ -1,3 +1,5 @@
+import os
+
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -33,9 +35,17 @@ def create_app() -> FastAPI:
 
     api.include_router(health_router)
     api.include_router(launch_router)
-    api.include_router(seller_router)
     api.include_router(public_listings_router)
     api.include_router(operator_router)
+
+    # Seller routes are open by default for the public beta.
+    # Set DECLUTTER_SELLER_AUTH_MODE=protected to require Firebase auth.
+    seller_protected = (
+        [Depends(require_firebase_protection)]
+        if os.getenv('DECLUTTER_SELLER_AUTH_MODE', '').strip().lower() == 'protected'
+        else []
+    )
+    api.include_router(seller_router, dependencies=seller_protected)
 
     protected = [Depends(require_firebase_protection)]
     api.include_router(analysis_router, dependencies=protected)

@@ -11,16 +11,51 @@ class FocusTimer extends StatefulWidget {
   State<FocusTimer> createState() => _FocusTimerState();
 }
 
-class _FocusTimerState extends State<FocusTimer> {
+class _FocusTimerState extends State<FocusTimer> with WidgetsBindingObserver {
   static const _initialDuration = Duration(minutes: 10);
   late Duration _remaining = _initialDuration;
   Timer? _timer;
   bool _isRunning = false;
+  DateTime? _backgroundedAt;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      if (_isRunning) {
+        _backgroundedAt = DateTime.now();
+        _timer?.cancel();
+      }
+    } else if (state == AppLifecycleState.resumed) {
+      if (_backgroundedAt != null && _isRunning) {
+        final elapsed = DateTime.now().difference(_backgroundedAt!);
+        _backgroundedAt = null;
+        setState(() {
+          _remaining = _remaining - elapsed;
+          if (_remaining <= Duration.zero) {
+            _remaining = Duration.zero;
+            _isRunning = false;
+          }
+        });
+        if (_remaining > Duration.zero) {
+          _startPeriodicTimer();
+        } else {
+          widget.onCompleted?.call();
+        }
+      }
+    }
   }
 
   void _toggleTimer() {
@@ -42,6 +77,10 @@ class _FocusTimerState extends State<FocusTimer> {
       _isRunning = true;
     });
 
+    _startPeriodicTimer();
+  }
+
+  void _startPeriodicTimer() {
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_remaining <= Duration.zero) {
         timer.cancel();
@@ -67,6 +106,7 @@ class _FocusTimerState extends State<FocusTimer> {
 
   void _resetTimer() {
     _timer?.cancel();
+    _backgroundedAt = null;
     setState(() {
       _remaining = _initialDuration;
       _isRunning = false;

@@ -228,6 +228,7 @@ class _SessionTimerScreenState extends State<SessionTimerScreen> {
       _cashToClearSyncMessage = 'Syncing queued decisions...';
     });
 
+    var syncedCount = 0;
     try {
       for (final decision in pending) {
         if (_remoteItemsByGroupId[decision.groupId] == null) {
@@ -235,6 +236,7 @@ class _SessionTimerScreenState extends State<SessionTimerScreen> {
           continue;
         }
         await _syncRemoteDecision(decision);
+        syncedCount++;
       }
 
       final sessionId = _remoteSessionId;
@@ -253,7 +255,12 @@ class _SessionTimerScreenState extends State<SessionTimerScreen> {
             : 'Some decisions are still queued for sync.';
       });
     } catch (error) {
-      _pendingRemoteDecisions.insertAll(0, pending);
+      final failed = pending.skip(syncedCount);
+      for (final decision in failed) {
+        if (!_pendingRemoteDecisions.any((p) => p.groupId == decision.groupId && p.category == decision.category)) {
+          _pendingRemoteDecisions.add(decision);
+        }
+      }
       if (!mounted) return;
       setState(() {
         _isSyncingCashToClear = false;
@@ -1066,6 +1073,7 @@ class _DecisionNoteSheetState extends State<_DecisionNoteSheet> {
             autofocus: true,
             textInputAction: TextInputAction.done,
             maxLines: 3,
+            maxLength: 500,
             decoration: const InputDecoration(
               labelText: 'What action did you take?',
               hintText: 'e.g. Boxed kids books for library drop-off',

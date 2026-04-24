@@ -20,6 +20,9 @@ abstract class DetectionInterpreter {
 
   /// Runs inference using the provided [input] and fills [outputs].
   void run(Object input, Map<int, Object> outputs);
+
+  /// Releases native resources held by the interpreter.
+  void close();
 }
 
 /// Default implementation backed by the real TFLite [Interpreter].
@@ -52,5 +55,10 @@ class TfliteDetectionInterpreter implements DetectionInterpreter {
   @override
   void run(Object input, Map<int, Object> outputs) {
     _interpreter.runForMultipleInputs([input], outputs);
+  }
+
+  @override
+  void close() {
+    _interpreter.close();
   }
 }

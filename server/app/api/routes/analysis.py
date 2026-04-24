@@ -38,12 +38,14 @@ def get_analysis_adapter() -> (
     return create_analysis_adapter_from_env()
 
 
-upload_adapter = LocalSignedUploadAdapter()
+@lru_cache(maxsize=1)
+def _get_upload_adapter() -> LocalSignedUploadAdapter:
+    return LocalSignedUploadAdapter()
 
 
 @router.post("/intake/session", response_model=IntakeSessionResponse)
 def create_intake_session() -> IntakeSessionResponse:
-    session = upload_adapter.create_upload_session()
+    session = _get_upload_adapter().create_upload_session()
     return IntakeSessionResponse(**session.__dict__)
 
 

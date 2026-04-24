@@ -177,6 +177,12 @@ def launch_status() -> dict[str, object]:
     }
 
 
+def _sanitize_host(host: str) -> str:
+    if any(c in host for c in '<>"\'\n\r\t'):
+        return 'invalid-host'
+    return host
+
+
 def _external_path(request: Request, internal_path: str) -> str:
     configured_prefix = os.getenv('DECLUTTER_PUBLIC_BASE_PATH', '').strip('/')
     forwarded_prefix = request.headers.get('x-forwarded-prefix', '').strip('/')
@@ -186,5 +192,5 @@ def _external_path(request: Request, internal_path: str) -> str:
         path = f'/{prefix}{path}'
 
     proto = request.headers.get('x-forwarded-proto', request.url.scheme)
-    host = request.headers.get('host', request.url.netloc)
+    host = _sanitize_host(request.headers.get('host', request.url.netloc))
     return f'{proto}://{host}{path}'

@@ -48,6 +48,7 @@ class _CaptureScreenState extends State<CaptureScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _controller?.dispose();
+    _detectorService.dispose();
     super.dispose();
   }
 
@@ -132,8 +133,8 @@ class _CaptureScreenState extends State<CaptureScreen>
         return;
       }
 
+      _controller?.dispose();
       setState(() {
-        _controller?.dispose();
         _controller = controller;
         _isRequesting = false;
       });

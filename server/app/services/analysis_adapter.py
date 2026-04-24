@@ -357,9 +357,15 @@ def create_analysis_adapter_from_env() -> MockStructuredAnalysisAdapter | OpenAI
 def _extract_json_object(content: str) -> str:
     stripped = content.strip()
     if stripped.startswith("```"):
-        fenced = re.search(r"```(?:json)?\\s*(\\{.*?\\})\\s*```", stripped, re.DOTALL)
-        if fenced:
-            return fenced.group(1)
+        first_newline = stripped.find("\n")
+        if first_newline != -1:
+            last_fence = stripped.rfind("```")
+            if last_fence > first_newline:
+                inner = stripped[first_newline:last_fence].strip()
+                start = inner.find("{")
+                end = inner.rfind("}")
+                if start != -1 and end > start:
+                    return inner[start:end + 1]
 
     start = stripped.find("{")
     end = stripped.rfind("}")

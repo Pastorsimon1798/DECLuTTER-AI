@@ -1181,3 +1181,31 @@ def test_public_listing_legacy_path_redirects_to_new_listing_path(
             operator.get_operator_analysis_adapter.cache_clear()
         operator.get_operator_session_store.cache_clear()
         public_listings.get_public_listing_service.cache_clear()
+
+
+def test_extract_json_object_handles_nested_json_in_fence() -> None:
+    from services.analysis_adapter import _extract_json_object
+
+    fenced = '```json\n{"items": [{"label": "camera", "confidence": 0.91}, {"label": "box", "confidence": 0.82}]}\n```'
+    result = _extract_json_object(fenced)
+    parsed = __import__('json').loads(result)
+    assert len(parsed['items']) == 2
+    assert parsed['items'][0]['label'] == 'camera'
+
+
+def test_extract_json_object_handles_plain_json() -> None:
+    from services.analysis_adapter import _extract_json_object
+
+    plain = '{"items": [{"label": "book", "confidence": 0.9}]}'
+    result = _extract_json_object(plain)
+    parsed = __import__('json').loads(result)
+    assert parsed['items'][0]['label'] == 'book'
+
+
+def test_seller_app_can_be_protected_by_env_var(monkeypatch) -> None:
+    monkeypatch.setenv('DECLUTTER_SELLER_AUTH_MODE', 'protected')
+    from app.main import create_app
+
+    protected_client = __import__('fastapi.testclient', fromlist=['TestClient']).TestClient(create_app())
+    response = protected_client.get('/app')
+    assert response.status_code == 401

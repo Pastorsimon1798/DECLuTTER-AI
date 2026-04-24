@@ -93,6 +93,13 @@ class DetectorService {
     _isInitialized = true;
   }
 
+  /// Releases the interpreter and clears internal state.
+  void dispose() {
+    _interpreter?.close();
+    _interpreter = null;
+    _isInitialized = false;
+  }
+
   /// Runs detection on the provided [imagePath]. If the real model is not
   /// available (e.g. in CI or local tests), it returns mock detections from the
   /// debug JSON asset to unblock UI development.
