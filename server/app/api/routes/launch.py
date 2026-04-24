@@ -38,6 +38,7 @@ def launch_landing_page(request: Request) -> str:
       </div>
     """.strip()
 
+    canonical_url = escape(_external_path(request, '/'))
     return """
 <!doctype html>
 <html lang="en">
@@ -138,7 +139,7 @@ def launch_landing_page(request: Request) -> str:
 </html>
 """.replace('__RECENT_LISTINGS_HTML__', recent_listings_html).replace(
         '__CANONICAL_URL__',
-        _external_path(request, '/'),
+        canonical_url,
     ).strip()
 
 
@@ -178,7 +179,7 @@ def launch_status() -> dict[str, object]:
 
 
 def _sanitize_host(host: str) -> str:
-    if any(c in host for c in '<>"\'\n\r\t'):
+    if any(c in host for c in '<>"\'\n\r\t& `'):
         return 'invalid-host'
     return host
 
