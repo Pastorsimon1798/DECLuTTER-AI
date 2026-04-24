@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from html import escape
 
-from fastapi import APIRouter
+import os
+
+from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
 from core.settings import Settings
@@ -16,7 +18,7 @@ def get_launch_listing_service() -> CashToClearSessionStore:
 
 
 @router.get("/", response_class=HTMLResponse)
-def launch_landing_page() -> str:
+def launch_landing_page(request: Request) -> str:
     recent_cards = []
     for listing in get_launch_listing_service().list_recent_public_listings(limit=3):
         recent_cards.append(
@@ -44,7 +46,7 @@ def launch_landing_page() -> str:
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>DECLuTTER-AI — Turn clutter into live listing pages</title>
     <meta name="description" content="Upload one photo, get an AI-assisted title and starter price, and publish a shareable listing page from the same VPS-hosted flow." />
-    <link rel="canonical" href="/"/>
+    <link rel="canonical" href="__CANONICAL_URL__" />
     <style>
       :root { color-scheme: light; --ink:#10213f; --muted:#60708f; --line:#d8e2f1; --brand:#2451ff; --brand2:#7c3aed; --bg:#f3f7ff; }
       * { box-sizing:border-box; }
@@ -134,7 +136,10 @@ def launch_landing_page() -> str:
     </div>
   </body>
 </html>
-""".replace('__RECENT_LISTINGS_HTML__', recent_listings_html).strip()
+""".replace('__RECENT_LISTINGS_HTML__', recent_listings_html).replace(
+        '__CANONICAL_URL__',
+        _external_path(request, '/'),
+    ).strip()
 
 
 @router.get("/launch/status")
@@ -170,3 +175,16 @@ def launch_status() -> dict[str, object]:
             "Firebase, S3, and real eBay API credentials are later public-production upgrades, not blockers for the current VPS-hosted flow.",
         ],
     }
+
+
+def _external_path(request: Request, internal_path: str) -> str:
+    configured_prefix = os.getenv('DECLUTTER_PUBLIC_BASE_PATH', '').strip('/')
+    forwarded_prefix = request.headers.get('x-forwarded-prefix', '').strip('/')
+    prefix = configured_prefix or forwarded_prefix
+    path = internal_path if internal_path.startswith('/') else f'/{internal_path}'
+    if prefix and not path.startswith(f'/{prefix}/'):
+        path = f'/{prefix}{path}'
+
+    proto = request.headers.get('x-forwarded-proto', request.url.scheme)
+    host = request.headers.get('host', request.url.netloc)
+    return f'{proto}://{host}{path}'
