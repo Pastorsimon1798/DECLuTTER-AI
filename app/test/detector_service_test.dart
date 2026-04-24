@@ -220,6 +220,9 @@ class _FixtureDetectionInterpreter implements DetectionInterpreter {
   TensorType outputType(int index) => TensorType.float32;
 
   @override
+  void close() {}
+
+  @override
   void run(Object input, Map<int, Object> outputs) {
     expect(input, isA<List>());
     final batch = input as List<dynamic>;
@@ -288,6 +291,9 @@ class _ThrowingInterpreter implements DetectionInterpreter {
   TensorType outputType(int index) => TensorType.float32;
 
   @override
+  void close() {}
+
+  @override
   void run(Object input, Map<int, Object> outputs) {
     throw StateError('inference failure');
   }
@@ -310,6 +316,9 @@ class _TrackingThrowingInterpreter implements DetectionInterpreter {
 
   @override
   TensorType outputType(int index) => TensorType.float32;
+
+  @override
+  void close() {}
 
   @override
   void run(Object input, Map<int, Object> outputs) {

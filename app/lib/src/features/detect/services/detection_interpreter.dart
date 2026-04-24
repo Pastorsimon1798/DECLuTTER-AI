@@ -88,7 +88,7 @@ class TfliteDetectionInterpreter implements DetectionInterpreter {
         return TensorType.int32;
       case tflite.TensorType.int64:
         return TensorType.int64;
-      case tflite.TensorType.bool:
+      case tflite.TensorType.boolean:
         return TensorType.boolean;
       default:
         return TensorType.float32;

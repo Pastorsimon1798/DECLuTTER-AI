@@ -1,5 +1,4 @@
-import 'dart:typed_data';
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:onnxruntime/onnxruntime.dart';
 
@@ -95,7 +94,7 @@ class OnnxDetectionInterpreter implements DetectionInterpreter {
 
     try {
       final inputs = <String, OrtValue>{_inputName: inputOrt};
-      final ortOutputs = _session.runAsync(runOptions, inputs);
+      final ortOutputs = await _session.runAsync(runOptions, inputs);
 
       if (ortOutputs == null) {
         throw StateError('ONNX inference returned null outputs.');
