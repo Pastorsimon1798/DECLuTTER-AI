@@ -24,10 +24,13 @@ class _FocusTimerState extends State<FocusTimer> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
   }
 
+  DateTime? _timerTarget;
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
+    _timer = null;
     super.dispose();
   }
 
@@ -37,16 +40,19 @@ class _FocusTimerState extends State<FocusTimer> with WidgetsBindingObserver {
       if (_isRunning) {
         _backgroundedAt = DateTime.now();
         _timer?.cancel();
+        _timer = null;
       }
     } else if (state == AppLifecycleState.resumed) {
       if (_backgroundedAt != null && _isRunning) {
         final elapsed = DateTime.now().difference(_backgroundedAt!);
         _backgroundedAt = null;
+        if (!mounted) return;
         setState(() {
           _remaining = _remaining - elapsed;
           if (_remaining <= Duration.zero) {
             _remaining = Duration.zero;
             _isRunning = false;
+            _timerTarget = null;
           }
         });
         if (_remaining > Duration.zero) {
@@ -61,6 +67,7 @@ class _FocusTimerState extends State<FocusTimer> with WidgetsBindingObserver {
   void _toggleTimer() {
     if (_isRunning) {
       _timer?.cancel();
+      _timer = null;
       setState(() {
         _isRunning = false;
       });
@@ -75,38 +82,48 @@ class _FocusTimerState extends State<FocusTimer> with WidgetsBindingObserver {
 
     setState(() {
       _isRunning = true;
+      _timerTarget = DateTime.now().add(_remaining);
     });
 
     _startPeriodicTimer();
   }
 
   void _startPeriodicTimer() {
+    _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        _timer = null;
+        return;
+      }
+
+      if (_timerTarget != null) {
+        _remaining = _timerTarget!.difference(DateTime.now());
+      }
+
       if (_remaining <= Duration.zero) {
         timer.cancel();
-        if (!mounted) return;
+        _timer = null;
         setState(() {
           _isRunning = false;
           _remaining = Duration.zero;
+          _timerTarget = null;
         });
         widget.onCompleted?.call();
         return;
       }
 
-      if (!mounted) {
-        timer.cancel();
-        return;
-      }
-
       setState(() {
-        _remaining -= const Duration(seconds: 1);
+        // _remaining is already updated above from target
       });
     });
   }
 
   void _resetTimer() {
     _timer?.cancel();
+    _timer = null;
     _backgroundedAt = null;
+    _timerTarget = null;
     setState(() {
       _remaining = _initialDuration;
       _isRunning = false;
