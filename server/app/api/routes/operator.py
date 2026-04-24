@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import html
 import os
 import secrets
@@ -181,7 +182,7 @@ async def _run_sprint(
     intake = await intake_service.intake(image)
     manual_label = label_override.strip()
     try:
-        analysis = analysis_adapter.run(intake.storage_key)
+        analysis = await asyncio.to_thread(analysis_adapter.run, intake.storage_key)
         detected = analysis.items[0] if analysis.items else None
         engine = analysis.engine
     except RuntimeError:
@@ -195,16 +196,19 @@ async def _run_sprint(
 
     label = manual_label or detected.label
     confidence = detected.confidence if detected is not None else 1.0
-    session = store.create_session(
+    session = await asyncio.to_thread(
+        store.create_session,
         owner_uid,
         SessionCreateRequest(image_storage_key=intake.storage_key),
     )
-    item = store.add_item(
+    item = await asyncio.to_thread(
+        store.add_item,
         owner_uid,
         session.session_id,
         SessionItemCreateRequest(label=label, condition=condition.strip() or 'unknown'),
     )
-    listing = store.create_public_listing(
+    listing = await asyncio.to_thread(
+        store.create_public_listing,
         owner_uid,
         session.session_id,
         item.item_id,

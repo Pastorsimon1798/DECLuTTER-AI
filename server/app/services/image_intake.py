@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import io
 from dataclasses import dataclass
 
@@ -57,7 +58,8 @@ class ImageIntakeService:
             )
 
         try:
-            sanitized_payload, extension = self._strip_metadata(
+            sanitized_payload, extension = await asyncio.to_thread(
+                self._strip_metadata,
                 raw_payload,
                 image.content_type,
             )
