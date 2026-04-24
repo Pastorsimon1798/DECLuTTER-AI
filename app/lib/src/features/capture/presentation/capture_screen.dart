@@ -209,12 +209,9 @@ class _CaptureScreenState extends State<CaptureScreen>
       return;
     }
 
-    final sessionKey =
-        '${DateTime.now().millisecondsSinceEpoch}_${capture.path.hashCode}';
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => SessionTimerScreen(
-          sessionKey: sessionKey,
           capturedImagePath: capture.path,
           capturedAt: DateTime.now(),
           groupedResult: _groupedResult,
