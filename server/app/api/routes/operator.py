@@ -93,16 +93,28 @@ def _require_operator_auth(
     expected_password = os.getenv('DECLUTTER_OPERATOR_PASSWORD') or os.getenv(
         'DECLUTTER_SHARED_ACCESS_TOKEN',
     )
+    expected_username = os.getenv('DECLUTTER_OPERATOR_USERNAME', 'operator').strip()
     if not expected_password:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail='Operator access requires DECLUTTER_OPERATOR_PASSWORD or DECLUTTER_SHARED_ACCESS_TOKEN.',
         )
 
-    if credentials is None or not secrets.compare_digest(
-        credentials.password,
-        expected_password,
-    ):
+    if credentials is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail='Operator credentials are required.',
+            headers={'WWW-Authenticate': 'Basic realm="DECLuTTER-AI Operator"'},
+        )
+
+    if not secrets.compare_digest(credentials.username, expected_username):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail='Operator credentials are required.',
+            headers={'WWW-Authenticate': 'Basic realm="DECLuTTER-AI Operator"'},
+        )
+
+    if not secrets.compare_digest(credentials.password, expected_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail='Operator credentials are required.',

@@ -42,12 +42,12 @@ def require_firebase_protection(
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(exc),
+            detail="Authentication failed. Please check your credentials and try again.",
         ) from exc
     except RuntimeError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(exc),
+            detail="Authentication service temporarily unavailable. Please try again later.",
         ) from exc
 
     request.state.user_claims = user_claims

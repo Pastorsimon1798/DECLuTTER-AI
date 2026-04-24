@@ -290,7 +290,7 @@ def test_default_auth_mode_does_not_accept_scaffold_tokens() -> None:
     assert response.status_code == 503
     assert (
         response.json()['detail']
-        == 'Strict auth mode requires firebase-admin to be installed.'
+        == 'Authentication service temporarily unavailable. Please try again later.'
     )
 
 
@@ -336,7 +336,7 @@ def test_analysis_rejects_wrong_self_hosted_shared_token() -> None:
         headers={'Authorization': 'Bearer wrong-token'},
     )
     assert response.status_code == 401
-    assert response.json()['detail'] == 'Invalid shared access token.'
+    assert response.json()['detail'] == 'Authentication failed. Please check your credentials and try again.'
 
 
 def test_bad_home_inference_config_does_not_break_health() -> None:

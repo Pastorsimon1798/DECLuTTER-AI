@@ -135,10 +135,23 @@ class OpenAICompatibleAnalysisAdapter:
             structured_output_version="2026-04-home-inference",
         )
 
+    @staticmethod
+    def _sanitize_storage_key(key: str) -> str:
+        """Validate storage key to prevent prompt injection."""
+        sanitized = key.strip()
+        if not sanitized:
+            raise RuntimeError("Empty image storage key.")
+        if not all(c.isalnum() or c in "._-/" for c in sanitized):
+            raise RuntimeError("Invalid characters in image storage key.")
+        if ".." in sanitized:
+            raise RuntimeError("Path traversal detected in image storage key.")
+        return sanitized
+
     def _build_payloads(self, image_storage_key: str) -> list[dict[str, Any]]:
+        safe_key = self._sanitize_storage_key(image_storage_key)
         return [
             self._build_payload(
-                image_storage_key,
+                safe_key,
                 system_prompt=(
                     "You are DECLuTTER-AI's item detection adapter. "
                     "Return compact valid JSON only. Do not include markdown."
@@ -148,12 +161,12 @@ class OpenAICompatibleAnalysisAdapter:
                     "an items array. Each item must have label and confidence "
                     "between 0 and 1. Example: "
                     '{"items":[{"label":"book","confidence":0.82}]} '
-                    f"Storage key: {image_storage_key}"
+                    f"Storage key: {safe_key}"
                 ),
                 include_response_format=True,
             ),
             self._build_payload(
-                image_storage_key,
+                safe_key,
                 system_prompt=(
                     "You identify the visible items in DECLuTTER-AI photos. "
                     "Reply only with a compact JSON object containing an "
@@ -166,7 +179,7 @@ class OpenAICompatibleAnalysisAdapter:
                 include_response_format=True,
             ),
             self._build_payload(
-                image_storage_key,
+                safe_key,
                 system_prompt=(
                     "You identify the visible items in DECLuTTER-AI photos. "
                     "Reply only with a compact JSON object containing an "

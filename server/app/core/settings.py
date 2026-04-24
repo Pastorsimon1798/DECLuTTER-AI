@@ -176,4 +176,8 @@ class Settings:
     @staticmethod
     def cors_allow_origins() -> list[str]:
         raw_origins = os.getenv("DECLUTTER_CORS_ALLOW_ORIGINS", "")
-        return [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
+        origins = [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
+        # Reject wildcard when credentials are enabled (security baseline)
+        if "*" in origins:
+            return []
+        return origins
