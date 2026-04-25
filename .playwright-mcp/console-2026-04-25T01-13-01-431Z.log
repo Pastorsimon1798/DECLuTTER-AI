@@ -1,3 +1,0 @@
-[   52243ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://127.0.0.1:4174/favicon.ico:0
-[  142363ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://127.0.0.1:4174/LICENSE:0
-[  147362ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://127.0.0.1:4174/docs/ROADMAP.md:0
