@@ -4,8 +4,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../grouping/domain/detection_group.dart';
+import '../../decide/presentation/decision_card.dart';
 import '../../grouping/domain/grouped_detection_result.dart';
+import '../../valuate/models/valuation.dart';
+import '../../summary/presentation/session_summary_screen.dart';
 import '../domain/session_decision.dart';
 import '../services/cash_to_clear_api.dart';
 import 'session_controller.dart';
@@ -34,6 +36,7 @@ class SessionTimerScreen extends StatefulWidget {
 class _SessionTimerScreenState extends State<SessionTimerScreen> {
   late final SessionController _controller;
   bool _ownsController = false;
+  DateTime? _sessionStartTime;
 
   @override
   void initState() {
@@ -43,6 +46,7 @@ class _SessionTimerScreenState extends State<SessionTimerScreen> {
         SessionController(
           groupedResult: widget.groupedResult,
         );
+    _sessionStartTime = DateTime.now();
   }
 
   @override
@@ -53,55 +57,62 @@ class _SessionTimerScreenState extends State<SessionTimerScreen> {
     super.dispose();
   }
 
-  Future<void> _handleDecision(DecisionCategory category) async {
-    final error = _controller.validateDecision(category);
-    if (error != null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error)),
-        );
-      }
-      return;
-    }
-
-    final selectedGroup =
-        _controller.groupedResult.groupForId(_controller.selectedGroupId);
-    if (selectedGroup == null) return;
-
-    final progress = _controller.state is SessionActive
-        ? (_controller.state as SessionActive).decisionCountForGroup(selectedGroup.id)
-        : 0;
-
-    final note = await showModalBottomSheet<String>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) => _DecisionNoteSheet(
-        category: category,
-        group: selectedGroup,
-        progress: progress,
-      ),
-    );
-
-    if (!mounted || note == null) {
-      return;
-    }
-
-    await _controller.addDecision(category, note);
-    HapticFeedback.lightImpact();
-  }
-
   void _handleTimerCompleted() {
     _controller.completeSprint();
+    _navigateToSummary();
+  }
+
+  void _handleFinishSprint() {
+    _controller.completeSprint();
+    _navigateToSummary();
+  }
+
+  void _navigateToSummary() {
     if (!mounted) return;
-    showModalBottomSheet(
-      context: context,
-      showDragHandle: true,
-      isDismissible: false,
-      builder: (_) => _TimerCompleteSheet(
-        onStartNewSprint: () {
-          Navigator.of(context).pop();
-          _controller.resetSprint();
-        },
+    final state = _controller.state;
+    final activeState = state is SessionActive ? state : null;
+    if (activeState == null) return;
+
+    final decisionsMap = <String, SessionDecision>{};
+    for (final decision in activeState.decisions) {
+      decisionsMap.putIfAbsent(decision.groupId, () => decision);
+    }
+
+    final valuationsMap = <String, Valuation?>{};
+    for (final group in activeState.groupedResult.groups) {
+      final remoteItem = activeState.remoteItemsByGroupId[group.id];
+      final dto = remoteItem?.valuation;
+      if (dto != null) {
+        valuationsMap[group.id] = Valuation(
+          low: dto.lowUsd,
+          mid: (dto.lowUsd + dto.highUsd) / 2,
+          high: dto.highUsd,
+          confidence: double.tryParse(dto.confidence) ?? 0.3,
+        );
+      } else {
+        valuationsMap[group.id] = null;
+      }
+    }
+
+    final duration = _sessionStartTime != null
+        ? DateTime.now().difference(_sessionStartTime!)
+        : Duration.zero;
+
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => SessionSummaryScreen(
+          groupedResult: activeState.groupedResult,
+          decisions: decisionsMap,
+          valuations: valuationsMap,
+          sessionDuration: duration,
+          onStartNewSprint: () {
+            Navigator.of(context).pop();
+            setState(() {
+              _sessionStartTime = DateTime.now();
+            });
+            _controller.resetSprint();
+          },
+        ),
       ),
     );
   }
@@ -147,14 +158,58 @@ class _SessionTimerScreenState extends State<SessionTimerScreen> {
                 const SizedBox(height: 24),
                 FocusTimer(onCompleted: _handleTimerCompleted),
                 const SizedBox(height: 24),
-                if (activeState != null)
-                  SessionDecisionComposer(
-                    groupedResult: activeState.groupedResult,
-                    selectedGroupId: activeState.selectedGroupId,
-                    onGroupSelected: _controller.selectGroup,
-                    decisions: activeState.decisions,
-                    onCategorySelected: _handleDecision,
+                if (activeState != null &&
+                    activeState.groupedResult.hasGroups) ...[
+                  _SprintProgressHeader(
+                    decidedCount: activeState.decidedCount,
+                    totalCount: activeState.groupedResult.groupCount,
                   ),
+                  const SizedBox(height: 16),
+                  ...activeState.groupedResult.groups.map((group) {
+                    final decision = _controller.decisionForGroup(group.id);
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: DecisionCard(
+                        groupId: group.id,
+                        groupLabel: group.displayLabel,
+                        itemCount: group.count,
+                        decision: decision,
+                        valuation: activeState.valuationForGroup(group.id),
+                        isLoadingValuation:
+                            activeState.isValuationLoading(group.id),
+                        onRetryValuation: () =>
+                            _controller.retryValuation(group.id),
+                        onDecision: (category, note) {
+                          _controller.addDecision(
+                            group.id,
+                            category,
+                            note: note,
+                          );
+                          HapticFeedback.lightImpact();
+                        },
+                        onUndo: () => _controller.undoDecision(group.id),
+                      ),
+                    );
+                  }),
+                  if (activeState.allGroupsDecided) ...[
+                    const SizedBox(height: 24),
+                    FilledButton(
+                      onPressed: _handleFinishSprint,
+                      child: const Text('Finish Sprint'),
+                    ),
+                  ],
+                ] else if (activeState != null) ...[
+                  Card(
+                    elevation: 0,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Text(
+                        'No grouped detections yet. Capture a zone photo or retry analysis to unlock guided sorting.',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 16),
                 if (activeState != null)
                   SessionDecisionHistory(
@@ -246,6 +301,41 @@ class _CapturedPhotoPreview extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _SprintProgressHeader extends StatelessWidget {
+  const _SprintProgressHeader({
+    required this.decidedCount,
+    required this.totalCount,
+  });
+
+  final int decidedCount;
+  final int totalCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      children: [
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: totalCount == 0 ? 0 : decidedCount / totalCount,
+              backgroundColor: theme.colorScheme.surfaceContainerHighest,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          '$decidedCount/$totalCount groups decided',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -775,165 +865,4 @@ class SessionSummaryCard extends StatelessWidget {
   }
 }
 
-class _DecisionNoteSheet extends StatefulWidget {
-  const _DecisionNoteSheet({
-    required this.category,
-    required this.group,
-    required this.progress,
-  });
 
-  final DecisionCategory category;
-  final DetectionGroup group;
-  final int progress;
-
-  @override
-  State<_DecisionNoteSheet> createState() => _DecisionNoteSheetState();
-}
-
-class _DecisionNoteSheetState extends State<_DecisionNoteSheet> {
-  late final TextEditingController _controller = TextEditingController();
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final resolved = widget.progress;
-    final remainingRaw = widget.group.count - resolved;
-    final remaining = remainingRaw < 0 ? 0 : remainingRaw;
-    final progressValue =
-        widget.group.count == 0 ? 0.0 : resolved / widget.group.count;
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 24,
-        right: 24,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-        top: 24,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(widget.category.icon),
-              const SizedBox(width: 8),
-              Text(
-                widget.category.label,
-                style: theme.textTheme.titleMedium
-                    ?.copyWith(fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Group ${widget.group.id} • ${widget.group.friendlyLabel}',
-            style: theme.textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              Expanded(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(999),
-                  child: LinearProgressIndicator(
-                    value: progressValue.clamp(0.0, 1.0),
-                    backgroundColor: theme.colorScheme.surfaceContainerHighest,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Text('$resolved/${widget.group.count} sorted'),
-            ],
-          ),
-          if (remaining > 0) ...[
-            const SizedBox(height: 4),
-            Text(
-              remaining == 1
-                  ? 'One item left in this group after this note.'
-                  : '$remaining items left in this group after this note.',
-              style: theme.textTheme.bodySmall,
-            ),
-          ],
-          const SizedBox(height: 12),
-          TextField(
-            controller: _controller,
-            autofocus: true,
-            textInputAction: TextInputAction.done,
-            maxLines: 3,
-            maxLength: 500,
-            decoration: const InputDecoration(
-              labelText: 'What action did you take?',
-              hintText: 'e.g. Boxed kids books for library drop-off',
-              border: OutlineInputBorder(),
-            ),
-            onSubmitted: (_) =>
-                Navigator.of(context).pop(_controller.text.trim()),
-          ),
-          const SizedBox(height: 12),
-          Align(
-            alignment: Alignment.centerRight,
-            child: FilledButton(
-              onPressed: () =>
-                  Navigator.of(context).pop(_controller.text.trim()),
-              child: const Text('Save decision'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TimerCompleteSheet extends StatelessWidget {
-  const _TimerCompleteSheet({this.onStartNewSprint});
-
-  final VoidCallback? onStartNewSprint;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Time! Celebrate the wins',
-            style: Theme.of(context)
-                .textTheme
-                .titleLarge
-                ?.copyWith(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
-          const Text('• Log your decisions for each highlighted group.'),
-          const SizedBox(height: 8),
-          const Text('• If something feels sticky, tap Maybe and move on.'),
-          const SizedBox(height: 8),
-          const Text(
-              '• Finish strong with the summary screen when you are ready.'),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              if (onStartNewSprint != null)
-                TextButton(
-                  onPressed: onStartNewSprint,
-                  child: const Text('Start new sprint'),
-                ),
-              const SizedBox(width: 8),
-              FilledButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Back to sorting'),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}

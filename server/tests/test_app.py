@@ -658,6 +658,36 @@ def test_valuation_uses_comp_counts_and_source() -> None:
     assert body['estimated_high_usd'] >= body['estimated_low_usd']
 
 
+def test_simple_valuation_returns_low_mid_high_confidence() -> None:
+    _set_auth_mode('scaffold')
+    response = client.post(
+        '/valuation',
+        headers=VALID_HEADERS,
+        json={'category': 'electronics', 'condition': 'good', 'count': 2},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body['low'] >= 0
+    assert body['mid'] >= body['low']
+    assert body['high'] >= body['mid']
+    assert body['confidence'] == 0.3
+
+
+def test_simple_valuation_defaults_to_other_category() -> None:
+    _set_auth_mode('scaffold')
+    response = client.post(
+        '/valuation',
+        headers=VALID_HEADERS,
+        json={'category': 'toys'},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body['low'] >= 0
+    assert body['high'] >= body['low']
+    assert body['confidence'] == 0.3
+
 
 def test_listing_draft_includes_checklist_and_category() -> None:
     _set_auth_mode('scaffold')

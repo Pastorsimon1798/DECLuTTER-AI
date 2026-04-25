@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 
 import '../../grouping/domain/detection_group.dart';
 import '../../grouping/domain/grouped_detection_result.dart';
+import '../../valuate/models/valuation.dart';
+import '../../valuate/services/valuation_service.dart';
 import '../domain/session_decision.dart';
 import '../services/cash_to_clear_api.dart';
 import 'session_state.dart';
@@ -14,26 +16,36 @@ class SessionController extends ChangeNotifier {
   SessionController({
     required GroupedDetectionResult groupedResult,
     CashToClearApiClient? cashToClearApi,
+    ValuationService? valuationService,
   })  : _groupedResult = groupedResult,
         _cashToClearApi =
-            cashToClearApi ?? CashToClearApiClient.fromEnvironment() {
+            cashToClearApi ?? CashToClearApiClient.fromEnvironment(),
+        _valuationService =
+            valuationService ?? ValuationService.fromEnvironment() {
     _ownsCashToClearApi = cashToClearApi == null;
+    _ownsValuationService = valuationService == null;
     if (_groupedResult.hasGroups) {
       _selectedGroupId = _groupedResult.primaryGroup?.id;
     }
     _bootstrapCashToClearSession();
+    _bootstrapValuations();
   }
 
   final GroupedDetectionResult _groupedResult;
   final CashToClearApiClient _cashToClearApi;
+  final ValuationService _valuationService;
   bool _ownsCashToClearApi = false;
+  bool _ownsValuationService = false;
   bool _disposed = false;
 
   final List<SessionDecision> _decisions = [];
+  final Map<String, List<SessionDecision>> _undoStack = {};
   final Map<String, CashToClearItemDto> _remoteItemsByGroupId = {};
   final Map<String, String> _publicListingUrlsByGroupId = {};
   final Set<String> _creatingListingPageGroupIds = {};
   final List<_PendingRemoteDecision> _pendingRemoteDecisions = [];
+  final Map<String, Valuation?> _valuations = {};
+  final Set<String> _valuationLoadingGroupIds = {};
   String? _selectedGroupId;
   String? _remoteSessionId;
   double? _moneyOnTableLowUsd;
@@ -51,10 +63,19 @@ class SessionController extends ChangeNotifier {
         moneyOnTableLowUsd: _moneyOnTableLowUsd,
         moneyOnTableHighUsd: _moneyOnTableHighUsd,
         remoteItemsByGroupId: Map.unmodifiable(_remoteItemsByGroupId),
-        publicListingUrlsByGroupId: Map.unmodifiable(_publicListingUrlsByGroupId),
-        creatingListingPageGroupIds: Set.unmodifiable(_creatingListingPageGroupIds),
+        publicListingUrlsByGroupId:
+            Map.unmodifiable(_publicListingUrlsByGroupId),
+        creatingListingPageGroupIds:
+            Set.unmodifiable(_creatingListingPageGroupIds),
         isSprintCompleted: _isSprintCompleted,
         groupedResult: _groupedResult,
+        undoStack: Map.unmodifiable({
+          for (final entry in _undoStack.entries)
+            entry.key: List.unmodifiable(entry.value),
+        }),
+        valuations: Map.unmodifiable(_valuations),
+        valuationLoadingGroupIds:
+            Set.unmodifiable(_valuationLoadingGroupIds),
       );
 
   String? get selectedGroupId => _selectedGroupId;
@@ -82,30 +103,64 @@ class SessionController extends ChangeNotifier {
     return null;
   }
 
-  /// Records a new decision locally and synchronously, then attempts to
-  /// mirror it to the remote backend asynchronously.
-  Future<void> addDecision(DecisionCategory category, String note) async {
-    final selectedGroup = _groupedResult.groupForId(_selectedGroupId);
-    if (selectedGroup == null) return;
+  /// Returns the current decision for a group, if any.
+  SessionDecision? decisionForGroup(String groupId) {
+    for (final decision in _decisions) {
+      if (decision.groupId == groupId) {
+        return decision;
+      }
+    }
+    return null;
+  }
 
+  /// Records a new decision for [groupId], replacing any existing decision
+  /// for that group. The previous decision is pushed onto the undo stack.
+  Future<void> addDecision(
+    String groupId,
+    DecisionCategory category, {
+    String? note,
+  }) async {
+    final group = _groupedResult.groupForId(groupId);
+    if (group == null) return;
+
+    final current = decisionForGroup(groupId);
+    if (current != null) {
+      _undoStack.putIfAbsent(groupId, () => []).add(current);
+    }
+
+    _decisions.removeWhere((d) => d.groupId == groupId);
     _decisions.insert(
       0,
       SessionDecision(
-        groupId: selectedGroup.id,
-        groupLabel: selectedGroup.friendlyLabel,
-        groupTotal: selectedGroup.count,
+        groupId: group.id,
+        groupLabel: group.friendlyLabel,
+        groupTotal: group.count,
         category: category,
         createdAt: DateTime.now(),
-        note: note.isEmpty ? null : note,
+        note: note,
       ),
     );
     _notify();
 
     await _recordRemoteDecision(
-      group: selectedGroup,
+      group: group,
       category: category,
-      note: note.isEmpty ? null : note,
+      note: note,
     );
+  }
+
+  /// Restores the previous decision for [groupId] from the undo stack.
+  /// If the stack is empty, the current decision is simply removed.
+  void undoDecision(String groupId) {
+    final stack = _undoStack[groupId];
+    if (stack != null && stack.isNotEmpty) {
+      final previous = stack.removeLast();
+      _decisions.removeWhere((d) => d.groupId == groupId);
+      _decisions.insert(0, previous);
+    } else {
+      _decisions.removeWhere((d) => d.groupId == groupId);
+    }
+    _notify();
   }
 
   /// Creates a public listing page for the given group on the backend.
@@ -156,11 +211,49 @@ class SessionController extends ChangeNotifier {
   void resetSprint() {
     _isSprintCompleted = false;
     _decisions.clear();
+    _undoStack.clear();
     _selectedGroupId =
         _groupedResult.hasGroups ? _groupedResult.primaryGroup?.id : null;
     _moneyOnTableLowUsd = null;
     _moneyOnTableHighUsd = null;
+    _valuations.clear();
+    _valuationLoadingGroupIds.clear();
     _notify();
+    _bootstrapValuations();
+  }
+
+  /// Manually retry valuation for a single group (e.g. after a network error).
+  Future<void> retryValuation(String groupId) async {
+    final group = _groupedResult.groupForId(groupId);
+    if (group == null) return;
+    await _fetchValuation(group);
+  }
+
+  Future<void> _bootstrapValuations() async {
+    if (!_groupedResult.hasGroups) return;
+
+    await Future.wait(
+      _groupedResult.groups.map((group) => _fetchValuation(group)),
+    );
+  }
+
+  Future<void> _fetchValuation(DetectionGroup group) async {
+    _valuationLoadingGroupIds.add(group.id);
+    _notify();
+
+    try {
+      final valuation = await _valuationService.estimateGroup(
+        group,
+        condition: 'unknown',
+      );
+      _valuations[group.id] = valuation;
+    } on Exception catch (e) {
+      debugPrint('Valuation fetch failed for ${group.id}: $e');
+      _valuations[group.id] = null;
+    } finally {
+      _valuationLoadingGroupIds.remove(group.id);
+      _notify();
+    }
   }
 
   Future<void> _bootstrapCashToClearSession() async {
@@ -334,6 +427,9 @@ class SessionController extends ChangeNotifier {
     _disposed = true;
     if (_ownsCashToClearApi) {
       _cashToClearApi.dispose();
+    }
+    if (_ownsValuationService) {
+      _valuationService.dispose();
     }
     super.dispose();
   }

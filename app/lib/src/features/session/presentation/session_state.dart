@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../grouping/domain/grouped_detection_result.dart';
+import '../../valuate/models/valuation.dart';
 import '../domain/session_decision.dart';
 import '../services/cash_to_clear_api.dart';
 
@@ -39,6 +40,9 @@ final class SessionActive extends SessionState {
     required this.creatingListingPageGroupIds,
     required this.isSprintCompleted,
     required this.groupedResult,
+    required this.undoStack,
+    required this.valuations,
+    required this.valuationLoadingGroupIds,
   });
 
   final List<SessionDecision> decisions;
@@ -52,7 +56,34 @@ final class SessionActive extends SessionState {
   final Set<String> creatingListingPageGroupIds;
   final bool isSprintCompleted;
   final GroupedDetectionResult groupedResult;
+  final Map<String, List<SessionDecision>> undoStack;
+
+  /// Per-group valuation estimates (null while loading or on error).
+  final Map<String, Valuation?> valuations;
+
+  /// Group IDs that are currently fetching a valuation.
+  final Set<String> valuationLoadingGroupIds;
 
   int decisionCountForGroup(String groupId) =>
       decisions.where((d) => d.groupId == groupId).length;
+
+  /// Returns the valuation for [groupId], if any.
+  Valuation? valuationForGroup(String groupId) => valuations[groupId];
+
+  /// Whether the valuation for [groupId] is currently being fetched.
+  bool isValuationLoading(String groupId) =>
+      valuationLoadingGroupIds.contains(groupId);
+
+  /// Number of groups that have at least one decision.
+  int get decidedCount {
+    final decidedGroupIds = <String>{};
+    for (final decision in decisions) {
+      decidedGroupIds.add(decision.groupId);
+    }
+    return decidedGroupIds.length;
+  }
+
+  /// Whether every group has a decision.
+  bool get allGroupsDecided =>
+      groupedResult.hasGroups && decidedCount == groupedResult.groupCount;
 }
