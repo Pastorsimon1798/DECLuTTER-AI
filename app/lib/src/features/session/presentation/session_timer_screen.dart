@@ -42,6 +42,7 @@ class _SessionTimerScreenState extends State<SessionTimerScreen> {
   bool _isSyncingCashToClear = false;
   String? _cashToClearSyncMessage;
   bool _ownsCashToClearApi = false;
+  bool _isSprintCompleted = false;
 
   @override
   void initState() {
@@ -349,11 +350,31 @@ class _SessionTimerScreenState extends State<SessionTimerScreen> {
 
   void _handleTimerCompleted() {
     if (!mounted) return;
+    setState(() {
+      _isSprintCompleted = true;
+    });
     showModalBottomSheet(
       context: context,
       showDragHandle: true,
-      builder: (_) => const _TimerCompleteSheet(),
+      isDismissible: false,
+      builder: (_) => _TimerCompleteSheet(
+        onStartNewSprint: () {
+          Navigator.of(context).pop();
+          _resetSprint();
+        },
+      ),
     );
+  }
+
+  void _resetSprint() {
+    setState(() {
+      _isSprintCompleted = false;
+      _decisions.clear();
+      _selectedGroupId =
+          widget.groupedResult.hasGroups ? widget.groupedResult.primaryGroup?.id : null;
+      _moneyOnTableLowUsd = null;
+      _moneyOnTableHighUsd = null;
+    });
   }
 
   @override
@@ -1117,7 +1138,9 @@ class _DecisionNoteSheetState extends State<_DecisionNoteSheet> {
 }
 
 class _TimerCompleteSheet extends StatelessWidget {
-  const _TimerCompleteSheet();
+  const _TimerCompleteSheet({this.onStartNewSprint});
+
+  final VoidCallback? onStartNewSprint;
 
   @override
   Widget build(BuildContext context) {
@@ -1142,12 +1165,20 @@ class _TimerCompleteSheet extends StatelessWidget {
           const Text(
               '• Finish strong with the summary screen when you are ready.'),
           const SizedBox(height: 16),
-          Align(
-            alignment: Alignment.centerRight,
-            child: FilledButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Back to sorting'),
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              if (onStartNewSprint != null)
+                TextButton(
+                  onPressed: onStartNewSprint,
+                  child: const Text('Start new sprint'),
+                ),
+              const SizedBox(width: 8),
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Back to sorting'),
+              ),
+            ],
           ),
         ],
       ),

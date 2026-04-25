@@ -52,9 +52,10 @@ def create_intake_session() -> IntakeSessionResponse:
 @router.post("/intake", response_model=ImageIntakeResponse)
 async def intake_image(
     image: UploadFile = File(...),
+    storage_key: str | None = None,
     service: ImageIntakeService = Depends(get_image_intake_service),
 ) -> ImageIntakeResponse:
-    result = await service.intake(image)
+    result = await service.intake(image, storage_key=storage_key)
     return ImageIntakeResponse(**result.__dict__)
 
 

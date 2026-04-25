@@ -1,7 +1,10 @@
+import logging
 import os
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from api.routes.a2a import router as a2a_router
 from api.routes.analysis import router as analysis_router
@@ -17,11 +20,26 @@ from api.routes.sessions import router as sessions_router
 from api.routes.user_data import router as user_data_router
 from api.routes.valuation import router as valuation_router
 from core.settings import Settings
+from middleware.rate_limit import RateLimitMiddleware
+from middleware.request_logging import RequestLoggingMiddleware
+from middleware.request_size import RequestSizeLimitMiddleware
 from security.dependencies import require_firebase_protection
+
+logger = logging.getLogger("declutter.request")
+
+
+def _correlation_id(request: Request) -> str:
+    return getattr(request.state, "correlation_id", "unknown")
 
 
 def create_app() -> FastAPI:
     api = FastAPI(title="DECLuTTER-AI API", version="0.1.0")
+
+    # Middleware order: logging (outer) -> size limit -> rate limit -> CORS -> routes
+    api.add_middleware(RequestLoggingMiddleware)
+    api.add_middleware(RequestSizeLimitMiddleware, max_bytes=10 * 1024 * 1024)
+    if os.getenv('DECLUTTER_RATE_LIMIT_DISABLED', '').lower() not in {'1', 'true', 'yes'}:
+        api.add_middleware(RateLimitMiddleware)
 
     cors_origins = Settings.cors_allow_origins()
     if cors_origins:
@@ -31,6 +49,49 @@ def create_app() -> FastAPI:
             allow_credentials=True,
             allow_methods=["*"],
             allow_headers=["*"],
+        )
+
+    @api.exception_handler(StarletteHTTPException)
+    async def http_exception_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"detail": exc.detail, "correlation_id": _correlation_id(request)},
+            headers=getattr(exc, "headers", None) or {},
+        )
+
+    @api.exception_handler(KeyError)
+    async def keyerror_handler(request: Request, exc: KeyError) -> JSONResponse:
+        logger.warning("KeyError at %s: %s", request.url.path, exc)
+        return JSONResponse(
+            status_code=404,
+            content={
+                "error": "Not found",
+                "detail": str(exc),
+                "correlation_id": _correlation_id(request),
+            },
+        )
+
+    @api.exception_handler(RuntimeError)
+    async def runtime_error_handler(request: Request, exc: RuntimeError) -> JSONResponse:
+        logger.error("RuntimeError at %s: %s", request.url.path, exc)
+        return JSONResponse(
+            status_code=503,
+            content={
+                "error": "Service unavailable",
+                "detail": str(exc),
+                "correlation_id": _correlation_id(request),
+            },
+        )
+
+    @api.exception_handler(Exception)
+    async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+        logger.exception("Unhandled exception at %s", request.url.path)
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "Internal server error",
+                "correlation_id": _correlation_id(request),
+            },
         )
 
     api.include_router(health_router)

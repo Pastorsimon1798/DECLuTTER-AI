@@ -111,8 +111,8 @@ class OpenAICompatibleAnalysisAdapter:
         if self.api_key and self.api_key.strip():
             headers["Authorization"] = f"Bearer {self.api_key.strip()}"
 
-        last_error: RuntimeError | None = None
-        for payload in self._build_payloads(image_storage_key):
+        errors: list[str] = []
+        for i, payload in enumerate(self._build_payloads(image_storage_key), start=1):
             try:
                 response = self.transport(
                     f"{self.base_url}/chat/completions",
@@ -123,10 +123,11 @@ class OpenAICompatibleAnalysisAdapter:
                 items = self._parse_items(response)
                 break
             except RuntimeError as exc:
-                last_error = exc
+                errors.append(f"Payload {i}: {exc}")
         else:
-            raise last_error or RuntimeError(
-                "Inference provider returned no usable response."
+            raise RuntimeError(
+                f"Inference provider returned no usable response after {len(errors)} attempt(s). "
+                f"Errors: {'; '.join(errors)}"
             )
 
         return AnalysisResult(
@@ -225,7 +226,7 @@ class OpenAICompatibleAnalysisAdapter:
             payload["response_format"] = {"type": "text"}
         return payload
 
-    _MAX_IMAGE_BYTES = 5 * 1024 * 1024  # 5 MB cap before base64 encoding
+    _MAX_IMAGE_BYTES = 10 * 1024 * 1024  # 10 MB cap before base64 encoding
 
     def _image_data_url(self, image_storage_key: str) -> str | None:
         candidate = (self.upload_dir / image_storage_key).resolve()

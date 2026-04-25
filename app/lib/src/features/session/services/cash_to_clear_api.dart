@@ -119,6 +119,21 @@ class CashToClearApiClient {
           'Cash-to-Clear backend is not configured.');
     }
 
+    return await _doRequest(method, path, body).timeout(
+      const Duration(seconds: 15),
+      onTimeout: () {
+        throw const CashToClearApiException(
+          'Backend request timed out after 15 seconds.',
+        );
+      },
+    );
+  }
+
+  Future<Map<String, dynamic>> _doRequest(
+    String method,
+    String path,
+    Map<String, dynamic>? body,
+  ) async {
     final request =
         await _httpClient.openUrl(method, Uri.parse('$baseUrl$path'));
     request.headers.contentType = ContentType.json;

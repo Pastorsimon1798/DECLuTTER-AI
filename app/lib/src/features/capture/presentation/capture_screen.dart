@@ -182,7 +182,7 @@ class _CaptureScreenState extends State<CaptureScreen>
         _lastCaptureBytes = bytes;
       });
       if (!kIsWeb) {
-        unawaited(_analyzeCapture(capture));
+        unawaited(_analyzeCaptureWithFeedback(capture));
       }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -217,6 +217,26 @@ class _CaptureScreenState extends State<CaptureScreen>
         ),
       ),
     );
+  }
+
+  Future<void> _analyzeCaptureWithFeedback(XFile capture) async {
+    try {
+      await _analyzeCapture(capture);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Analysis failed: $error'),
+          duration: const Duration(seconds: 4),
+          action: SnackBarAction(
+            label: 'DISMISS',
+            onPressed: () {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            },
+          ),
+        ),
+      );
+    }
   }
 
   Future<void> _analyzeCapture(XFile capture) async {

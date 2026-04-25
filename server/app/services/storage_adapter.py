@@ -8,8 +8,17 @@ from uuid import uuid4
 
 
 class ImageStorageAdapter(Protocol):
-    def put(self, payload: bytes, extension: str) -> str:
+    def put(self, payload: bytes, extension: str, storage_key: str | None = None) -> str:
         """Persist image bytes and return a storage key."""
+
+
+def _sanitize_storage_key(key: str | None, default_extension: str) -> str:
+    if not key:
+        return f"intake/{uuid4().hex}.{default_extension}"
+    sanitized = key.strip()
+    if ".." in sanitized or not all(c.isalnum() or c in "._-/" for c in sanitized):
+        raise RuntimeError("Invalid characters in storage key.")
+    return sanitized
 
 
 class LocalImageStorageAdapter:
@@ -19,12 +28,12 @@ class LocalImageStorageAdapter:
         )
         self.base_dir.mkdir(parents=True, exist_ok=True)
 
-    def put(self, payload: bytes, extension: str) -> str:
-        storage_key = f"intake/{uuid4().hex}.{extension}"
-        destination = self.base_dir / storage_key
+    def put(self, payload: bytes, extension: str, storage_key: str | None = None) -> str:
+        key = _sanitize_storage_key(storage_key, extension)
+        destination = self.base_dir / key
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_bytes(payload)
-        return storage_key
+        return key
 
 
 class S3ImageStorageAdapter:
@@ -54,8 +63,8 @@ class S3ImageStorageAdapter:
 
         self.client = boto3.client("s3", region_name=self.region_name)
 
-    def put(self, payload: bytes, extension: str) -> str:
-        key = f"{self.key_prefix}/{uuid4().hex}.{extension}"
+    def put(self, payload: bytes, extension: str, storage_key: str | None = None) -> str:
+        key = _sanitize_storage_key(storage_key, f"{self.key_prefix}/{uuid4().hex}.{extension}")
         self.client.put_object(
             Bucket=self.bucket,
             Key=key,

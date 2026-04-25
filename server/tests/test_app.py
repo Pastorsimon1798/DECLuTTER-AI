@@ -1,5 +1,7 @@
-import io
 import os
+os.environ['DECLUTTER_RATE_LIMIT_DISABLED'] = '1'
+
+import io
 import subprocess
 import sys
 from pathlib import Path
@@ -505,7 +507,9 @@ def test_openai_compatible_analysis_adapter_rejects_empty_choices() -> None:
     try:
         adapter.run('intake/missing.jpg')
     except RuntimeError as exc:
-        assert str(exc) == 'Inference provider returned no choices.'
+        assert 'Inference provider returned no choices.' in str(exc)
+        assert 'Payload 1:' in str(exc)
+        assert 'Payload 3:' in str(exc)
     else:
         raise AssertionError('empty choices should raise RuntimeError')
 
@@ -592,6 +596,50 @@ def test_intake_session_returns_signed_upload_stub() -> None:
     assert body['storage_key'].startswith('intake/')
     assert body['upload_url'].startswith('file://')
     assert body['expires_in_seconds'] > 0
+
+
+def test_intake_honors_session_storage_key(tmp_path: Path) -> None:
+    _set_auth_mode('scaffold')
+    app.dependency_overrides[analysis.get_image_intake_service] = lambda: ImageIntakeService(
+        storage=LocalImageStorageAdapter(str(tmp_path))
+    )
+
+    try:
+        session = client.post('/analysis/intake/session', headers=VALID_HEADERS)
+        assert session.status_code == 200
+        storage_key = session.json()['storage_key']
+
+        payload = _build_jpeg_with_exif()
+        response = client.post(
+            '/analysis/intake',
+            headers=VALID_HEADERS,
+            files={'image': ('input.jpg', payload, 'image/jpeg')},
+            params={'storage_key': storage_key},
+        )
+    finally:
+        app.dependency_overrides.pop(analysis.get_image_intake_service, None)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body['storage_key'] == storage_key
+
+    saved_path = tmp_path / storage_key
+    assert saved_path.exists()
+
+
+def test_intake_rejects_invalid_storage_key() -> None:
+    _set_auth_mode('scaffold')
+    payload = _build_jpeg_with_exif()
+    response = client.post(
+        '/analysis/intake',
+        headers=VALID_HEADERS,
+        files={'image': ('input.jpg', payload, 'image/jpeg')},
+        params={'storage_key': '../../../etc/passwd'},
+    )
+
+    assert response.status_code == 503
+    assert 'Invalid characters in storage key' in response.json()['detail']
+    assert 'correlation_id' in response.json()
 
 
 def test_valuation_uses_comp_counts_and_source() -> None:
@@ -1209,3 +1257,91 @@ def test_seller_app_can_be_protected_by_env_var(monkeypatch) -> None:
     protected_client = __import__('fastapi.testclient', fromlist=['TestClient']).TestClient(create_app())
     response = protected_client.get('/app')
     assert response.status_code == 401
+
+
+def test_rate_limit_middleware_blocks_excess_requests(monkeypatch) -> None:
+    monkeypatch.setenv('DECLUTTER_RATE_LIMIT_DISABLED', 'false')
+    monkeypatch.setenv('DECLUTTER_AUTH_MODE', 'off')
+    from app.main import create_app
+
+    limited_client = __import__('fastapi.testclient', fromlist=['TestClient']).TestClient(create_app())
+    # The default global limit is 60/min, but /analysis/intake is 10/min.
+    # Hit the intake endpoint 11 times quickly to trigger the limit.
+    for _ in range(10):
+        r = limited_client.post('/analysis/intake')
+        if r.status_code == 429:
+            break  # Shouldn't happen on first 10
+    else:
+        r = limited_client.post('/analysis/intake')
+    assert r.status_code == 429
+    assert 'Rate limit exceeded' in r.json()['detail']
+
+
+def test_request_size_limit_rejects_oversized_body(monkeypatch) -> None:
+    monkeypatch.setenv('DECLUTTER_RATE_LIMIT_DISABLED', 'true')
+    monkeypatch.setenv('DECLUTTER_AUTH_MODE', 'off')
+    from app.main import create_app
+
+    sized_client = __import__('fastapi.testclient', fromlist=['TestClient']).TestClient(create_app())
+    big_body = b'x' * (11 * 1024 * 1024)
+    response = sized_client.post('/analysis/run', content=big_body)
+    assert response.status_code == 413
+
+
+def test_correlation_id_header_is_present_in_response(monkeypatch) -> None:
+    monkeypatch.setenv('DECLUTTER_RATE_LIMIT_DISABLED', 'true')
+    monkeypatch.setenv('DECLUTTER_AUTH_MODE', 'off')
+    from app.main import create_app
+
+    cid_client = __import__('fastapi.testclient', fromlist=['TestClient']).TestClient(create_app())
+    response = cid_client.get('/health/')
+    assert response.status_code == 200
+    assert 'x-correlation-id' in response.headers
+    assert len(response.headers['x-correlation-id']) == 36
+
+
+def test_correlation_id_can_be_provided_in_request_header(monkeypatch) -> None:
+    monkeypatch.setenv('DECLUTTER_RATE_LIMIT_DISABLED', 'true')
+    monkeypatch.setenv('DECLUTTER_AUTH_MODE', 'off')
+    from app.main import create_app
+
+    cid_client = __import__('fastapi.testclient', fromlist=['TestClient']).TestClient(create_app())
+    response = cid_client.get('/health/', headers={'x-correlation-id': 'custom-id-123'})
+    assert response.status_code == 200
+    assert response.headers['x-correlation-id'] == 'custom-id-123'
+
+
+def test_runtime_error_returns_503_with_correlation_id() -> None:
+    _set_auth_mode('shared_token')
+    os.environ['DECLUTTER_SHARED_ACCESS_TOKEN'] = 'self-hosted-secret'
+    os.environ['DECLUTTER_ANALYSIS_PROVIDER'] = 'lmstudio'
+    os.environ.pop('DECLUTTER_INFERENCE_MODEL', None)
+    os.environ.pop('LMSTUDIO_MODEL', None)
+    analysis.get_analysis_adapter.cache_clear()
+
+    response = client.post(
+        '/analysis/run',
+        json={'session_id': 's-1', 'image_storage_key': 'private/key.jpg'},
+        headers=SHARED_TOKEN_HEADERS,
+    )
+    assert response.status_code == 503
+    body = response.json()
+    assert 'detail' in body
+    assert 'correlation_id' in body
+
+
+def test_keyerror_returns_404_with_correlation_id(monkeypatch) -> None:
+    monkeypatch.setenv('DECLUTTER_RATE_LIMIT_DISABLED', 'true')
+    from app.main import create_app
+
+    def raising_endpoint() -> None:
+        raise KeyError('missing_key')
+
+    temp_app = create_app()
+    temp_app.add_api_route('/_test_keyerror', raising_endpoint)
+    temp_client = __import__('fastapi.testclient', fromlist=['TestClient']).TestClient(temp_app)
+    response = temp_client.get('/_test_keyerror')
+    assert response.status_code == 404
+    body = response.json()
+    assert body['error'] == 'Not found'
+    assert 'correlation_id' in body

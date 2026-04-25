@@ -24,7 +24,11 @@
 | # | Issue | Files | PR #33 Fix |
 |---|---|---|---|
 | 1.1 | `list_sessions` N+1 query bomb | `session_store.py` | Single JOIN query replacing looped lookups |
+| 1.2 | Public Listing Ownership Bypass | `session_store.py` | Optional `owner_uid` filter added to `get_public_listing()` and `list_recent_public_listings()` |
 | 1.3 | CSV injection in eBay export | `marketplace_ebay_service.py` | Formula-triggering characters sanitized |
+| 1.4 | Firebase Admin Init Race Condition | `security/firebase.py` | Module-level `threading.Lock()` wraps `initialize_app()` check |
+| 1.5 | `list_sessions` Auth Crash = 500 Instead of 401 | `security/dependencies.py`, `main.py` | Default `user_claims` set when `auth_mode=off`; `sessions_router` included with `dependencies=protected` |
+| 1.6 | `valuation.py` Module-Level Service (Not Thread-Safe) | `api/routes/valuation.py` | Replaced module-level instance with `@lru_cache` factory + `Depends()` |
 | 1.7 | Path traversal via symlinks in uploads | `analysis_adapter.py` | `realpath()` resolution + boundary validation |
 | 1.8 | Unbounded memory for base64 encoding | `analysis_adapter.py` | 10MB file size caps enforced |
 | 1.9 | `setState() after dispose()` in 4 async methods | `session_timer_screen.dart` | `mounted` guards added |
@@ -56,30 +60,6 @@
 ## 🔴 TIER 1 — High ROI, Low Effort (Still Open)
 
 > These were identified in the original audit but not addressed in PR #33.
-
-### 1.2 Backend: Public Listing Ownership Bypass
-- **File:** `server/app/services/session_store.py:272-306`
-- **Issue:** `get_public_listing()` and `list_recent_public_listings()` do NOT filter by `owner_uid`. Any authenticated user can read any listing.
-- **Fix:** Add `owner_uid` parameter/validation to both methods.
-- **Effort:** XS (~20 min)
-
-### 1.4 Backend: Firebase Admin Init Race Condition
-- **File:** `server/app/security/firebase.py:103-107, 126-130`
-- **Issue:** `if not firebase_admin._apps:` is not atomic; concurrent requests can race to `initialize_app()`, causing one to raise `ValueError` → 503 error.
-- **Fix:** Use a module-level `threading.Lock()` around the initialization check.
-- **Effort:** XS (~15 min)
-
-### 1.5 Backend: `list_sessions` Auth Crash = 500 Instead of 401
-- **File:** `server/app/api/routes/sessions.py:32-33`
-- **Issue:** `list_sessions` calls `_owner_uid(request)` which raises `HTTPException(401)`, but the route has no auth dependencies. FastAPI turns the uncaught exception into a 500.
-- **Fix:** Either add `dependencies=[Depends(require_firebase_protection)]` to the router, or handle the missing claims gracefully.
-- **Effort:** XS (~10 min)
-
-### 1.6 Backend: `valuation.py` Module-Level Service (Not Thread-Safe)
-- **File:** `server/app/api/routes/valuation.py:8`
-- **Issue:** `valuation_service = MockCompsValuationService()` at module scope. Concurrent requests mutate shared state (if any future implementation is stateful).
-- **Fix:** Move to `@lru_cache` factory + `Depends()`, matching pattern in `sessions.py`.
-- **Effort:** XS (~10 min)
 
 ### 1.14 Frontend: `CashToClearApiClient` Has No Request Timeout
 - **File:** `app/lib/src/features/session/services/cash_to_clear_api.dart:122-148`
@@ -221,7 +201,7 @@
 
 ## Summary: What to Do Next
 
-1. **Today (1 hour):** Knock out remaining Tier 1 items (1.2, 1.4, 1.5, 1.6, 1.14, 1.17, 1.20) — all XS effort.
+1. **Today (1 hour):** Knock out remaining Tier 1 items (1.14, 1.17, 1.20) — all XS effort.
 2. **This Week:** WP3 (Drift persistence) — it unlocks history, summary, and CSV.
 3. **Next Sprint:** WP1 (ONNX full wiring) — unblocks real inference and web builds.
 4. **Then:** WP2 → WP4 → WP5 → WP6 in dependency order.

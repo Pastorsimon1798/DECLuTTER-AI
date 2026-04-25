@@ -43,7 +43,7 @@ class ImageIntakeService:
         self.storage = storage or LocalImageStorageAdapter()
         self.scanner = scanner or NoopMalwareScanner()
 
-    async def intake(self, image: UploadFile) -> ImageIntakeResult:
+    async def intake(self, image: UploadFile, storage_key: str | None = None) -> ImageIntakeResult:
         if image.content_type not in SUPPORTED_CONTENT_TYPES:
             raise HTTPException(
                 status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
@@ -70,10 +70,10 @@ class ImageIntakeService:
             ) from exc
 
         self.scanner.scan(sanitized_payload)
-        storage_key = self.storage.put(sanitized_payload, extension)
+        final_key = self.storage.put(sanitized_payload, extension, storage_key)
 
         return ImageIntakeResult(
-            storage_key=storage_key,
+            storage_key=final_key,
             content_type=image.content_type,
             original_size_bytes=len(raw_payload),
             sanitized_size_bytes=len(sanitized_payload),
