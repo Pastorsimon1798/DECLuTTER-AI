@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import html
 import os
 import secrets
@@ -93,16 +94,28 @@ def _require_operator_auth(
     expected_password = os.getenv('DECLUTTER_OPERATOR_PASSWORD') or os.getenv(
         'DECLUTTER_SHARED_ACCESS_TOKEN',
     )
+    expected_username = os.getenv('DECLUTTER_OPERATOR_USERNAME', 'operator').strip()
     if not expected_password:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail='Operator access requires DECLUTTER_OPERATOR_PASSWORD or DECLUTTER_SHARED_ACCESS_TOKEN.',
         )
 
-    if credentials is None or not secrets.compare_digest(
-        credentials.password,
-        expected_password,
-    ):
+    if credentials is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail='Operator credentials are required.',
+            headers={'WWW-Authenticate': 'Basic realm="DECLuTTER-AI Operator"'},
+        )
+
+    if not secrets.compare_digest(credentials.username, expected_username):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail='Operator credentials are required.',
+            headers={'WWW-Authenticate': 'Basic realm="DECLuTTER-AI Operator"'},
+        )
+
+    if not secrets.compare_digest(credentials.password, expected_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail='Operator credentials are required.',
@@ -169,7 +182,7 @@ async def _run_sprint(
     intake = await intake_service.intake(image)
     manual_label = label_override.strip()
     try:
-        analysis = analysis_adapter.run(intake.storage_key)
+        analysis = await asyncio.to_thread(analysis_adapter.run, intake.storage_key)
         detected = analysis.items[0] if analysis.items else None
         engine = analysis.engine
     except RuntimeError:
@@ -183,16 +196,19 @@ async def _run_sprint(
 
     label = manual_label or detected.label
     confidence = detected.confidence if detected is not None else 1.0
-    session = store.create_session(
+    session = await asyncio.to_thread(
+        store.create_session,
         owner_uid,
         SessionCreateRequest(image_storage_key=intake.storage_key),
     )
-    item = store.add_item(
+    item = await asyncio.to_thread(
+        store.add_item,
         owner_uid,
         session.session_id,
         SessionItemCreateRequest(label=label, condition=condition.strip() or 'unknown'),
     )
-    listing = store.create_public_listing(
+    listing = await asyncio.to_thread(
+        store.create_public_listing,
         owner_uid,
         session.session_id,
         item.item_id,

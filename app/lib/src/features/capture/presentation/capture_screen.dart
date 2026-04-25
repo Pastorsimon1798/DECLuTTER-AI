@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io' show File;
 
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
@@ -25,6 +24,7 @@ class _CaptureScreenState extends State<CaptureScreen>
     with WidgetsBindingObserver {
   CameraController? _controller;
   XFile? _lastCapture;
+  Uint8List? _lastCaptureBytes;
   bool _isRequesting = true;
   bool _permissionDenied = false;
   bool _cameraUnavailable = false;
@@ -35,18 +35,22 @@ class _CaptureScreenState extends State<CaptureScreen>
   bool _isAnalyzingCapture = false;
   String? _analysisError;
   final DetectionGrouper _detectionGrouper = const DetectionGrouper();
+  Future<void>? _cameraInitFuture;
+  bool _disposed = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     unawaited(_detectorService.initialize());
-    _initCamera();
+    _cameraInitFuture = _initCamera();
   }
 
   @override
   void dispose() {
+    _disposed = true;
     WidgetsBinding.instance.removeObserver(this);
+    _cameraInitFuture?.ignore();
     _controller?.dispose();
     _detectorService.dispose();
     super.dispose();
@@ -67,7 +71,7 @@ class _CaptureScreenState extends State<CaptureScreen>
   }
 
   Future<void> _initCamera({bool reopen = false}) async {
-    if (!mounted) return;
+    if (_disposed || !mounted) return;
     setState(() {
       _isRequesting = true;
       if (!reopen) {
@@ -75,6 +79,7 @@ class _CaptureScreenState extends State<CaptureScreen>
         _permissionDenied = false;
         _errorMessage = null;
         _lastCapture = null;
+        _lastCaptureBytes = null;
         _detectionResult = null;
         _groupedResult = const GroupedDetectionResult.empty();
         _analysisError = null;
@@ -93,6 +98,7 @@ class _CaptureScreenState extends State<CaptureScreen>
         return;
       }
     } on PlatformException catch (error) {
+      if (!mounted) return;
       setState(() {
         _cameraUnavailable = true;
         _errorMessage = error.message ??
@@ -128,23 +134,29 @@ class _CaptureScreenState extends State<CaptureScreen>
       );
 
       await controller.initialize();
-      if (!mounted) {
+      if (_disposed || !mounted) {
         await controller.dispose();
         return;
       }
 
       _controller?.dispose();
+      if (_disposed) {
+        await controller.dispose();
+        return;
+      }
       setState(() {
         _controller = controller;
         _isRequesting = false;
       });
     } on CameraException catch (error) {
+      if (!mounted) return;
       setState(() {
         _cameraUnavailable = true;
         _errorMessage = error.description ?? 'Unable to start camera preview.';
         _isRequesting = false;
       });
     } on PlatformException catch (error) {
+      if (!mounted) return;
       setState(() {
         _cameraUnavailable = true;
         _errorMessage =
@@ -163,7 +175,12 @@ class _CaptureScreenState extends State<CaptureScreen>
     try {
       final capture = await controller.takePicture();
       if (!mounted) return;
-      setState(() => _lastCapture = capture);
+      final bytes = await capture.readAsBytes();
+      if (!mounted) return;
+      setState(() {
+        _lastCapture = capture;
+        _lastCaptureBytes = bytes;
+      });
       if (!kIsWeb) {
         unawaited(_analyzeCapture(capture));
       }
@@ -221,6 +238,20 @@ class _CaptureScreenState extends State<CaptureScreen>
         );
         _isAnalyzingCapture = false;
       });
+      if (result.isMocked && result.mockReason != null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Demo mode: ${result.mockReason}'),
+            duration: const Duration(seconds: 4),
+            action: SnackBarAction(
+              label: 'DISMISS',
+              onPressed: () {
+                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              },
+            ),
+          ),
+        );
+      }
     } catch (error) {
       if (!mounted) return;
       setState(() {
@@ -293,8 +324,8 @@ class _CaptureScreenState extends State<CaptureScreen>
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    Image.file(
-                      File(capture.path),
+                    Image.memory(
+                      _lastCaptureBytes!,
                       fit: BoxFit.cover,
                     ),
                     if (_detectionResult != null && !_detectionResult!.isEmpty)

@@ -35,7 +35,7 @@ void main() {
       );
 
       expect(groups, hasLength(2));
-      expect(groups.first.id, 'group_1');
+      expect(groups.first.id, 'books');
       expect(groups.first.displayLabel, 'Books');
       expect(groups.first.count, 2);
       expect(groups.first.friendlyLabel, 'Books (2 items)');

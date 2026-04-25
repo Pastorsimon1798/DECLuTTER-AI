@@ -75,6 +75,7 @@ class DetectionResult {
     required this.originalSize,
     required this.isMocked,
     this.inferenceTime,
+    this.mockReason,
   });
 
   /// Creates an empty result without detections.
@@ -82,12 +83,16 @@ class DetectionResult {
       : detections = const [],
         originalSize = Size.zero,
         isMocked = true,
-        inferenceTime = null;
+        inferenceTime = null,
+        mockReason = 'No detections available.';
 
   final List<Detection> detections;
   final Size originalSize;
   final bool isMocked;
   final Duration? inferenceTime;
+
+  /// Human-readable explanation when [isMocked] is true.
+  final String? mockReason;
 
   bool get isEmpty => detections.isEmpty;
 }

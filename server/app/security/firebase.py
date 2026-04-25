@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import threading
 from dataclasses import dataclass
 from typing import Any
 
@@ -20,6 +21,9 @@ class FirebaseSecuritySettings:
             accepted_app_check_token=os.getenv("DECLUTTER_TEST_APP_CHECK_TOKEN", ""),
             shared_access_token=os.getenv("DECLUTTER_SHARED_ACCESS_TOKEN", ""),
         )
+
+
+_firebase_init_lock = threading.Lock()
 
 
 class FirebaseTokenVerifier:
@@ -100,11 +104,12 @@ class FirebaseTokenVerifier:
                 "Strict auth mode requires firebase-admin to be installed."
             ) from exc
 
-        if not firebase_admin._apps:
-            try:
-                firebase_admin.initialize_app()
-            except ValueError as exc:
-                raise RuntimeError("Failed to initialize Firebase Admin app.") from exc
+        with _firebase_init_lock:
+            if not firebase_admin._apps:
+                try:
+                    firebase_admin.initialize_app()
+                except ValueError as exc:
+                    raise RuntimeError("Failed to initialize Firebase Admin app.") from exc
 
         try:
             claims = auth.verify_id_token(token, check_revoked=True)
@@ -123,11 +128,12 @@ class FirebaseTokenVerifier:
                 "Strict auth mode requires firebase-admin to be installed."
             ) from exc
 
-        if not firebase_admin._apps:
-            try:
-                firebase_admin.initialize_app()
-            except ValueError as exc:
-                raise RuntimeError("Failed to initialize Firebase Admin app.") from exc
+        with _firebase_init_lock:
+            if not firebase_admin._apps:
+                try:
+                    firebase_admin.initialize_app()
+                except ValueError as exc:
+                    raise RuntimeError("Failed to initialize Firebase Admin app.") from exc
 
         try:
             claims = app_check.verify_token(token)

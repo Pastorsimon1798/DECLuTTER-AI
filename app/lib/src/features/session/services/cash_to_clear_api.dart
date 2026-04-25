@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
+import '_http_client.dart' if (dart.library.html) '_http_client_web.dart';
 
 import '../domain/session_decision.dart';
 

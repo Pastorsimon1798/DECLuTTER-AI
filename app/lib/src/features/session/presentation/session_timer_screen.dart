@@ -71,6 +71,7 @@ class _SessionTimerScreenState extends State<SessionTimerScreen> {
       return;
     }
 
+    if (!mounted) return;
     setState(() {
       _isSyncingCashToClear = true;
       _cashToClearSyncMessage = 'Syncing Cash-to-Clear values...';
@@ -123,6 +124,20 @@ class _SessionTimerScreenState extends State<SessionTimerScreen> {
         const SnackBar(
             content:
                 Text('Select a highlighted group before logging a decision.')),
+      );
+      return;
+    }
+
+    final alreadyDecided = _decisions.any(
+      (d) => d.groupId == selectedGroup.id && d.category == category,
+    );
+    if (alreadyDecided) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'You already decided "${category.label}" for ${selectedGroup.friendlyLabel}.',
+          ),
+        ),
       );
       return;
     }
@@ -190,6 +205,7 @@ class _SessionTimerScreenState extends State<SessionTimerScreen> {
       return;
     }
 
+    if (!mounted) return;
     setState(() {
       _isSyncingCashToClear = true;
       _cashToClearSyncMessage = 'Saving decision to Cash-to-Clear...';
@@ -223,6 +239,7 @@ class _SessionTimerScreenState extends State<SessionTimerScreen> {
     final pending = List<_PendingRemoteDecision>.from(_pendingRemoteDecisions);
     _pendingRemoteDecisions.clear();
 
+    if (!mounted) return;
     setState(() {
       _isSyncingCashToClear = true;
       _cashToClearSyncMessage = 'Syncing queued decisions...';
@@ -291,6 +308,7 @@ class _SessionTimerScreenState extends State<SessionTimerScreen> {
     if (!_cashToClearApi.isConfigured ||
         sessionId == null ||
         remoteItem == null) {
+      if (!mounted) return;
       setState(() {
         _cashToClearSyncMessage =
             'Sync Cash-to-Clear values before creating a page.';
@@ -298,6 +316,7 @@ class _SessionTimerScreenState extends State<SessionTimerScreen> {
       return;
     }
 
+    if (!mounted) return;
     setState(() {
       _isSyncingCashToClear = true;
       _creatingListingPageGroupIds.add(groupId);

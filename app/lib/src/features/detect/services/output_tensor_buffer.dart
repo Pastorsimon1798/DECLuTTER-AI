@@ -1,4 +1,4 @@
-import 'package:tflite_flutter/tflite_flutter.dart';
+import '../domain/tensor_type.dart';
 
 /// Utility holder for allocating zero-filled output buffers that match the
 /// interpreter's tensor metadata. The interpreter will mutate the nested list
@@ -46,8 +46,6 @@ class OutputTensorBuffer {
         return List<int>.filled(length, 0);
       case TensorType.boolean:
         return List<bool>.filled(length, false);
-      default:
-        return List<dynamic>.filled(length, _zeroValue(type));
     }
   }
 

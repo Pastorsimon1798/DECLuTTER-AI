@@ -19,6 +19,8 @@ def require_firebase_protection(
     verifier: FirebaseTokenVerifier = Depends(get_firebase_verifier),
 ) -> None:
     if verifier.settings.auth_mode == "off":
+        request.state.user_claims = {"uid": "local-dev"}
+        request.state.app_claims = {"app_id": "local-dev"}
         return
 
     if not authorization or not authorization.startswith("Bearer "):
@@ -42,12 +44,12 @@ def require_firebase_protection(
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(exc),
+            detail="Authentication failed. Please check your credentials and try again.",
         ) from exc
     except RuntimeError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(exc),
+            detail="Authentication service temporarily unavailable. Please try again later.",
         ) from exc
 
     request.state.user_claims = user_claims

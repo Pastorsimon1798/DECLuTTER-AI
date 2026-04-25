@@ -5,8 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
-import 'package:tflite_flutter/tflite_flutter.dart';
-
+import 'package:declutter_ai/src/features/detect/domain/tensor_type.dart';
 import 'package:declutter_ai/src/features/detect/services/detection_interpreter.dart';
 import 'package:declutter_ai/src/features/detect/services/detector_service.dart';
 
@@ -221,6 +220,9 @@ class _FixtureDetectionInterpreter implements DetectionInterpreter {
   TensorType outputType(int index) => TensorType.float32;
 
   @override
+  void close() {}
+
+  @override
   void run(Object input, Map<int, Object> outputs) {
     expect(input, isA<List>());
     final batch = input as List<dynamic>;
@@ -289,6 +291,9 @@ class _ThrowingInterpreter implements DetectionInterpreter {
   TensorType outputType(int index) => TensorType.float32;
 
   @override
+  void close() {}
+
+  @override
   void run(Object input, Map<int, Object> outputs) {
     throw StateError('inference failure');
   }
@@ -311,6 +316,9 @@ class _TrackingThrowingInterpreter implements DetectionInterpreter {
 
   @override
   TensorType outputType(int index) => TensorType.float32;
+
+  @override
+  void close() {}
 
   @override
   void run(Object input, Map<int, Object> outputs) {

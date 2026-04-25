@@ -38,6 +38,7 @@ def launch_landing_page(request: Request) -> str:
       </div>
     """.strip()
 
+    canonical_url = escape(_external_path(request, "/"))
     return """
 <!doctype html>
 <html lang="en">
@@ -142,9 +143,9 @@ def launch_landing_page(request: Request) -> str:
     </div>
   </body>
 </html>
-""".replace("__RECENT_LISTINGS_HTML__", recent_listings_html).replace(
-        "__CANONICAL_URL__",
-        _external_path(request, "/"),
+""".replace('__RECENT_LISTINGS_HTML__', recent_listings_html).replace(
+        '__CANONICAL_URL__',
+        canonical_url,
     ).strip()
 
 
@@ -184,19 +185,19 @@ def launch_status() -> dict[str, object]:
 
 
 def _sanitize_host(host: str) -> str:
-    if any(c in host for c in '<>"\'\n\r\t'):
-        return "invalid-host"
+    if any(c in host for c in '<>"\'\n\r\t& `'):
+        return 'invalid-host'
     return host
 
 
 def _external_path(request: Request, internal_path: str) -> str:
-    configured_prefix = os.getenv("DECLUTTER_PUBLIC_BASE_PATH", "").strip("/")
-    forwarded_prefix = request.headers.get("x-forwarded-prefix", "").strip("/")
+    configured_prefix = os.getenv('DECLUTTER_PUBLIC_BASE_PATH', '').strip('/')
+    forwarded_prefix = request.headers.get('x-forwarded-prefix', '').strip('/')
     prefix = configured_prefix or forwarded_prefix
-    path = internal_path if internal_path.startswith("/") else f"/{internal_path}"
-    if prefix and not path.startswith(f"/{prefix}/"):
-        path = f"/{prefix}{path}"
+    path = internal_path if internal_path.startswith('/') else f'/{internal_path}'
+    if prefix and not path.startswith(f'/{prefix}/'):
+        path = f'/{prefix}{path}'
 
-    proto = request.headers.get("x-forwarded-proto", request.url.scheme)
-    host = _sanitize_host(request.headers.get("host", request.url.netloc))
-    return f"{proto}://{host}{path}"
+    proto = request.headers.get('x-forwarded-proto', request.url.scheme)
+    host = _sanitize_host(request.headers.get('host', request.url.netloc))
+    return f'{proto}://{host}{path}'
