@@ -202,6 +202,7 @@ class _CaptureScreenState extends State<CaptureScreen>
       if (!kIsWeb) {
         unawaited(_analyzeCaptureWithFeedback(capture));
       }
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
             content: Text('Photo saved. Review below before sorting.')),
