@@ -33,6 +33,8 @@ class OnnxDetectionInterpreter implements DetectionInterpreter {
   final Map<int, TensorType> _outputTypes = {};
 
   static Future<OnnxDetectionInterpreter> fromAsset(String assetPath) async {
+    // OrtEnv is a process-level singleton; init() is idempotent.
+    // release() is called in close() when the interpreter is disposed.
     OrtEnv.instance.init();
     final rawAsset = await rootBundle.load(assetPath);
     final bytes = rawAsset.buffer.asUint8List();
@@ -92,6 +94,7 @@ class OnnxDetectionInterpreter implements DetectionInterpreter {
   @override
   void close() {
     _session.release();
+    OrtEnv.instance.release();
   }
 
   List<int> _fetchInputShape() {

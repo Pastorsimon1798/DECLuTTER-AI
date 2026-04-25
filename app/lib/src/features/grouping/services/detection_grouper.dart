@@ -33,7 +33,10 @@ class DetectionGrouper {
     return [
       for (final entry in entries)
         DetectionGroup(
-          id: _normalizedLabel(entry.value.first.label).replaceAll(RegExp(r'[^a-z0-9]'), '_'),
+          // Normalize the label to a URL-safe ID: lowercase, trim, then replace
+          // any non-alphanumeric chars with underscores.
+          id: _normalizedLabel(entry.value.first.label)
+              .replaceAll(RegExp(r'[^a-z0-9]'), '_'),
           rawLabel: entry.value.first.label,
           displayLabel: entry.value.first.displayLabel,
           detections: List.unmodifiable(entry.value),
