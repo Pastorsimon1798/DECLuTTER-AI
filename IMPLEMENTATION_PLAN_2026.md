@@ -2,6 +2,7 @@
 
 > **Audience:** AI coding agents (Claude Code, Codex, etc.) picking up work packages.
 > **Status:** Planning doc. Source of truth for scope, stack, and sequencing.
+> **Last updated:** 2026-04-24 after PR #33 (Tier 0/1/2 fixes + ONNX adapter starter).
 > **Supersedes (for stack choices):** `ADHD_Vision_Organizer_MVP_Docs_v0.1.md` §6, §7, §14.
 > **Does not supersede:** the UX spec, privacy stance, or ADHD-friendly principles in the MVP doc — those still hold.
 
@@ -23,15 +24,15 @@
 
 ## 3. Target Stack (definitive)
 
-| Layer | Choice | License | Notes |
+| Layer | Choice | License | Status |
 |---|---|---|---|
-| Frontend | Flutter (existing) | BSD-3 | Keep `camera`, `permission_handler`, `image`. |
-| On-device inference runtime | `onnxruntime` Flutter plugin | MIT | Replaces `tflite_flutter`. |
-| On-device VLM | **Moondream 2** (ONNX, int8) | Apache 2.0 | Primary detector + item describer. ~1.9B params. |
-| On-device detector fallback | **RT-DETR** or **YOLO-NAS** (ONNX) | Apache 2.0 | Optional second pass for bounding boxes. **Do NOT use Ultralytics YOLOv8/v11 — AGPL.** |
-| Local DB | SQLite via `drift` | MIT | Specced in the MVP doc but not yet implemented. |
-| Optional server mode | FastAPI + Ollama + Qwen2.5-VL | MIT / Apache 2.0 | Self-hosted. User configures URL in settings. No default server. |
-| Valuation source | VLM-generated price range (on-device or server) | — | No third-party marketplace API in-app. User-supplied API keys allowed but never required. |
+| Frontend | Flutter (existing) | BSD-3 | ✅ Active. `camera`, `permission_handler`, `image` retained. |
+| On-device inference runtime | `onnxruntime` Flutter plugin | MIT | 🟡 Adapter (`OnnxDetectionInterpreter`) implemented but **not wired as default**. `tflite_flutter` still active. |
+| On-device VLM | **Moondream 2** (ONNX, int8) | Apache 2.0 | 📋 Planned. Blocked on WP1 completion. |
+| On-device detector fallback | **RT-DETR** or **YOLO-NAS** (ONNX) | Apache 2.0 | 📋 Planned. Do NOT use Ultralytics YOLOv8/v11 — AGPL. |
+| Local persistence | `shared_preferences` (timer state) + `drift` (full DB) | MIT | 🟡 `SharedPreferences` for `FocusTimer` state is live. **Drift deferred** — CI cannot run `build_runner`. Reintroduction requires committing generated `.g.dart` files. |
+| Optional server mode | FastAPI + Ollama + Qwen2.5-VL | MIT / Apache 2.0 | ✅ Backend scaffold exists and is deployed. |
+| Valuation source | VLM-generated price range (on-device or server) | — | 📋 Planned in WP5. |
 
 ### Licensing rules for agents
 - **Anything bundled with the app must be MIT / Apache 2.0 / BSD / public domain.** No AGPL, no GPL, no "research-only" weights.
@@ -44,16 +45,18 @@ Each WP is independently mergeable. Order follows the dependency graph in §5.
 
 ---
 
-### WP1 — Rip out TFLite, add ONNX Runtime
+### WP1 — ONNX Runtime (Complete the Migration)
 
-**Goal:** Replace the inference runtime without breaking the mock-detection UX.
+**Status:** 🟡 Partially complete. `OnnxDetectionInterpreter` exists with `TensorType` enum. Not yet default.
 
-**Changes:**
-- `app/pubspec.yaml`: remove `tflite_flutter`. Add `onnxruntime` (or `flutter_onnxruntime` — pick the most recently maintained plugin; verify license is MIT/Apache).
-- `app/assets/model/`: keep the folder. Update `README.md` to document the new ONNX path.
-- `app/lib/src/features/detect/services/detector_service.dart`: extract the TFLite-specific bits behind an `InferenceBackend` interface. Keep the mock-JSON fallback path intact so the app still works with no model file.
-- `app/lib/src/features/detect/services/detection_interpreter.dart`, `image_tensor_builder.dart`, `output_tensor_buffer.dart`: rewrite against ONNX Runtime tensor APIs. Preserve public method signatures used by `DetectorService`.
-- `app/test/detector_service_test.dart`: update to the new backend; mock JSON path must still pass.
+**Goal:** Replace TFLite as the default inference runtime without breaking the mock-detection UX.
+
+**Remaining work:**
+- Wire `OnnxDetectionInterpreter` into `DetectorService` as the default backend.
+- Update `DetectorService` to use async inference (`runAsync` vs sync `run`).
+- Remove `tflite_flutter` from `pubspec.yaml` once ONNX is fully validated.
+- Update `app/assets/model/README.md` to document the ONNX path.
+- Ensure `flutter test` passes with ONNX mocks.
 
 **Acceptance:**
 - `flutter pub get && flutter test` passes.
@@ -84,10 +87,13 @@ Each WP is independently mergeable. Order follows the dependency graph in §5.
 
 ### WP3 — Persistence (drift / SQLite)
 
+**Status:** 🟡 Partially complete. `FocusTimer` state persists via `SharedPreferences`. Full session/decision persistence not yet implemented.
+
 **Goal:** Implement the data model from MVP doc §6.2 so sessions and decisions survive restarts.
 
 **Changes:**
 - `app/pubspec.yaml`: add `drift`, `drift_flutter`, `path_provider`, `path`. Dev deps: `drift_dev`, `build_runner`.
+- **Critical:** Commit generated `.g.dart` files so CI does not need `build_runner`.
 - `app/lib/src/data/db/` (new):
   - `app_database.dart` — drift database with tables: `sessions`, `groups`, `decisions`, `valuations` (see WP5), `rules` (seed defaults).
   - `daos/session_dao.dart`, `daos/decision_dao.dart`, `daos/valuation_dao.dart`.
@@ -213,7 +219,7 @@ Parallelizable: WP1+WP3 can run concurrently. WP7 can start once WP5's interface
 
 ## 6. File Map (quick reference)
 
-**To delete:**
+**To delete (after WP1 completes):**
 - Any `tflite_flutter` import.
 - `app/assets/model/labels.txt.example` once Moondream is in (Moondream doesn't use a labels file).
 
@@ -232,7 +238,6 @@ Parallelizable: WP1+WP3 can run concurrently. WP7 can start once WP5's interface
 
 ## 7. Branching
 
-- Planning branch (this doc): `claude/add-item-valuation-EbeYl`.
 - Each WP should land on its own branch off `main`, named `claude/wp{N}-{slug}`. Example: `claude/wp2-moondream`.
 - Do not combine WPs into a single branch unless they share files that would conflict (e.g., WP1 and WP2 can share a branch).
 
@@ -259,4 +264,4 @@ Parallelizable: WP1+WP3 can run concurrently. WP7 can start once WP5's interface
 
 ---
 
-**Start with WP1. It unblocks everything else.**
+**WP1 is the blocker for everything else. Complete the ONNX wiring first.**

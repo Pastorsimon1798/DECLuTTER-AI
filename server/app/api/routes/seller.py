@@ -14,26 +14,27 @@ from api.routes.operator import (
 from services.image_intake import ImageIntakeService
 from services.session_store import CashToClearSessionStore
 
-router = APIRouter(prefix='/app', tags=['seller'])
-SELLER_APP_OWNER_UID = 'public-seller-studio'
+router = APIRouter(prefix="/app", tags=["seller"])
+SELLER_APP_OWNER_UID = "public-seller-studio"
 
 SELLER_PAGE_CONFIG = SprintPageConfig(
-    page_title='DECLuTTER-AI Seller App',
-    hero_eyebrow='Open beta',
-    hero_title='Turn one photo into a listing page',
+    page_title="DECLuTTER AI — Web Seller App",
+    hero_eyebrow="Web companion",
+    hero_title="Turn one photo into a listing page",
     hero_lede=(
-        'Upload a single item photo, let DECLuTTER-AI name it, estimate a '
-        'starter price, and hand you a public listing URL you can share today.'
+        "Upload a single item photo, let DECLuTTER-AI name it, estimate a "
+        "starter price, and hand you a public listing URL you can share anywhere. "
+        "This is the web companion to the mobile decluttering app."
     ),
-    access_badge='Open beta',
-    access_badge_class='ok',
-    run_eyebrow='Create a listing',
-    action_path='/app/sprint',
-    submit_label='Create my listing page',
+    access_badge="Open beta",
+    access_badge_class="ok",
+    run_eyebrow="Create a listing",
+    action_path="/app/sprint",
+    submit_label="Create my listing page",
 )
 
 
-@router.get('', response_class=HTMLResponse)
+@router.get("", response_class=HTMLResponse)
 def seller_app_home(request: Request) -> str:
     return render_sprint_page(
         request,
@@ -43,12 +44,12 @@ def seller_app_home(request: Request) -> str:
     )
 
 
-@router.post('/sprint', response_class=HTMLResponse)
+@router.post("/sprint", response_class=HTMLResponse)
 async def run_seller_sprint(
     request: Request,
     image: UploadFile = File(...),
-    condition: str = Form(default='unknown'),
-    label_override: str = Form(default=''),
+    condition: str = Form(default="unknown"),
+    label_override: str = Form(default=""),
     intake_service: ImageIntakeService = Depends(get_operator_image_intake_service),
     store: CashToClearSessionStore = Depends(get_operator_session_store),
 ) -> str:

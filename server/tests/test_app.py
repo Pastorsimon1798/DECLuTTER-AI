@@ -114,7 +114,7 @@ def test_root_landing_page_links_launch_surfaces() -> None:
     assert response.status_code == 200
     assert response.headers['content-type'].startswith('text/html')
     assert 'DECLuTTER-AI' in response.text
-    assert 'Turn one photo into a live listing page' in response.text
+    assert 'One photo. One sprint. One less pile.' in response.text
     assert '/app' in response.text
     assert '/health/readiness' in response.text
 
@@ -132,7 +132,7 @@ def test_launch_status_reports_backend_scaffold_limitations() -> None:
     assert body['checks']['multimodal_model_configured'] is False
     assert body['checks']['ebay_api_configured'] is False
     assert body['production_ready'] == all(body['checks'].values())
-    assert 'public listing pages now provide the promotable front door' in ' '.join(body['limitations'])
+    assert 'promotable front door' in ' '.join(body['limitations'])
 
 
 

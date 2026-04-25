@@ -1,91 +1,67 @@
 # Remaining Issues — Sorted by ROI & Leverage
 
 > Generated from comprehensive codebase audit (83 findings: 43 Flutter + 40 backend).
+> **Last updated:** 2026-04-24 after PR #33 (Tier 0/1/2 security, reliability, and architectural fixes).
 > Sorted by: (user impact × stability impact × security risk) / effort, then by architectural leverage.
 
 ---
 
-## ✅ Already Fixed (This Session)
+## ✅ Fixed in PR #33 (2026-04-24)
 
-| # | Issue | Files |
-|---|---|---|
-| 1 | SyntaxError in `_sanitize_host` blocked all backend tests | `launch.py`, `operator.py`, `public_listings.py` |
-| 2 | Fenced-JSON regex permanently failing on markdown code blocks | `analysis_adapter.py` |
-| 3 | SQLite connection leaks (no commit/close in raw `_connect()`) | `session_store.py` |
-| 4 | Missing database indexes causing full table scans | `session_store.py` |
-| 5 | Import-time filesystem crash from module-level upload adapter | `analysis.py` |
-| 6 | Camera controller disposed inside `setState()` race condition | `capture_screen.dart` |
-| 7 | Native TFLite interpreter leak (no `close()` chain) | `detection_interpreter.dart`, `detector_service.dart`, `capture_screen.dart` |
-| 8 | Decision queue re-queued entire batch on single failure | `session_timer_screen.dart` |
-| 9 | Null-dict crash on `decision_counts` schema default | `session.py` schema |
-| 10 | Seller routes had no opt-in auth protection | `main.py` |
-| 11 | Dead `return host` code from failed patch injection | `operator.py`, `public_listings.py` |
+### Tier 0 — Security Critical
 
----
+| # | Issue | Files | PR #33 Fix |
+|---|---|---|---|
+| 0.1 | Reflected XSS via `Host` header in `launch.py` | `launch.py` | `html.escape()` on canonical URL replacement; strengthened `_sanitize_host` |
+| 0.2 | Basic Auth username not validated | `operator.py` | Username comparison added against expected operator env var |
+| 0.3 | Sensitive error disclosure leaks Firebase internals | `dependencies.py` | Generic error messages returned; real errors logged server-side |
+| 0.4 | CORS credentials + wildcard origin risk | `main.py`, `settings.py` | Reject `*` in origins when credentials enabled |
+| 0.5 | LLM prompt injection via `image_storage_key` | `analysis_adapter.py` | Validation + sanitization before prompt interpolation |
+| 0.6 | Event-loop blocking in async endpoints | `analysis.py`, `operator.py`, `seller.py` | `asyncio.to_thread()` wrappers for sync I/O |
 
-## 🔴 TIER 0 — Security Critical (Fix Today)
+### Tier 1 — High ROI
 
-> Exploitable now. Every item is ≤30 minutes.
+| # | Issue | Files | PR #33 Fix |
+|---|---|---|---|
+| 1.1 | `list_sessions` N+1 query bomb | `session_store.py` | Single JOIN query replacing looped lookups |
+| 1.3 | CSV injection in eBay export | `marketplace_ebay_service.py` | Formula-triggering characters sanitized |
+| 1.7 | Path traversal via symlinks in uploads | `analysis_adapter.py` | `realpath()` resolution + boundary validation |
+| 1.8 | Unbounded memory for base64 encoding | `analysis_adapter.py` | 10MB file size caps enforced |
+| 1.9 | `setState() after dispose()` in 4 async methods | `session_timer_screen.dart` | `mounted` guards added |
+| 1.10 | `setState() after dispose()` in `CaptureScreen` | `capture_screen.dart` | `mounted` guards added |
+| 1.11 | `FocusTimer` `setState()` after dispose on resume | `focus_timer.dart` | `mounted` guards added |
+| 1.12 | `Timer.periodic` executes after `dispose()` + drift | `focus_timer.dart` | Timer lifecycle cleanup + `_timerTarget` drift fix |
+| 1.13 | `FocusTimer` loses state on process death | `focus_timer.dart` | `SharedPreferences` persistence for `_remaining`, `_isRunning` |
+| 1.15 | `CashToClearApiClient` no response size limit | `cash_to_clear_api.dart` | 10MB response/image caps enforced |
+| 1.16 | Decision spam bug (same group, infinite decisions) | `session_timer_screen.dart` | Decision deduplication per group |
+| 1.18 | Camera disposed on system dialogs (`inactive` vs `paused`) | `capture_screen.dart` | `_cameraInitFuture` + `_disposed` lifecycle cleanup |
+| 1.19 | `Image.file` re-decodes JPEG on every `setState` | `capture_screen.dart` | `Image.memory` byte caching |
 
-### 0.1 Reflected XSS via `Host` header in `launch.py`
-- **File:** `server/app/api/routes/launch.py:139-142, 180-183`
-- **Issue:** `_sanitize_host` blocks `<"'\n\r\t` but **not `>` or `&`**. The canonical URL is inserted into HTML via `.replace('__CANONICAL_URL__', url)` **without `html.escape()`**. `Host: evil.com><script>alert(1)</script>` breaks out of the `<link>` tag.
-- **Fix:** Add `html.escape(canonical_url)` in the template replacement; strengthen `_sanitize_host` to block `&`, `>`, spaces, backticks.
-- **Effort:** XS (~15 min)
+### Tier 2 — Architectural
 
-### 0.2 Basic Auth Username Not Validated (Any Username Works)
-- **File:** `server/app/api/routes/operator.py:102-105`
-- **Issue:** `secrets.compare_digest()` only checks `credentials.password`. Any username is accepted if the password matches `DECLUTTER_OPERATOR_PASSWORD`.
-- **Fix:** Add username comparison against an expected operator username env var.
-- **Effort:** XS (~10 min)
-
-### 0.3 Sensitive Error Disclosure Leaks Firebase Internals
-- **File:** `server/app/security/dependencies.py:43-51`
-- **Issue:** `str(exc)` is returned directly in 401/503 detail fields, leaking internal Firebase SDK errors, token validation messages, and stack info.
-- **Fix:** Return generic messages ("Authentication failed.", "Service unavailable.") and log the real error server-side.
-- **Effort:** XS (~10 min)
-
-### 0.4 CORS Credentials + Wildcard Origin Risk
-- **File:** `server/app/main.py:28-34`, `server/app/core/settings.py:177-179`
-- **Issue:** `allow_credentials=True` is paired with `allow_origins` read blindly from env. If `DECLUTTER_CORS_ALLOW_ORIGINS=*`, browsers will send credentials to any origin.
-- **Fix:** Reject `*` in origins when credentials are enabled; validate origin format.
-- **Effort:** XS (~15 min)
-
-### 0.5 LLM Prompt Injection via `image_storage_key`
-- **File:** `server/app/services/analysis_adapter.py:145-152, 163-165, 175-178`
-- **Issue:** `image_storage_key` has no validation and is interpolated verbatim into the OpenAI-compatible user prompt. An attacker can inject instruction overrides.
-- **Fix:** Validate `image_storage_key` against `^[a-zA-Z0-9_.-]+$` before interpolation; or `html.escape()` / sanitize before inserting into prompts.
-- **Effort:** XS (~15 min)
-
-### 0.6 Event-Loop Blocking in Async Endpoints
-- **Files:** `server/app/api/routes/analysis.py:52-58`, `operator.py:128-213`, `seller.py:46-78`
-- **Issue:** `async def` endpoints call sync PIL (`_strip_metadata`), SQLite, and `urllib.request` directly in the event loop, blocking ALL concurrent requests.
-- **Fix:** Wrap sync I/O in `asyncio.to_thread()` or `run_in_threadpool()`.
-- **Effort:** S (~1-2 hours)
+| # | Issue | Files | PR #33 Fix |
+|---|---|---|---|
+| 2.1 | SQLite persistence (sessions survive restarts) | `focus_timer.dart` | `SharedPreferences` for timer state; **Drift deferred** (CI build_runner issue) |
+| 2.4 | ONNX Runtime abstraction | `detect/services/` | `OnnxDetectionInterpreter` adapter added; `TensorType` enum extracted; **not yet wired as default** |
+| — | SQLite WAL mode | `session_store.py` | `PRAGMA journal_mode=WAL` added |
 
 ---
 
-## 🔴 TIER 1 — High ROI, Low Effort (This Week)
+## 🔴 TIER 0 — Security Critical (Still Open)
 
-> Each item here is ≤1 hour and fixes a crash, security hole, data leak, or major UX papercut.
+> None remaining after PR #33.
 
-### 1.1 Backend: `list_sessions` N+1 Query Bomb
-- **File:** `server/app/services/session_store.py:145-172`
-- **Issue:** `list_sessions()` calls `get_session_summary()` in a loop — for *N* sessions that's *N+1* DB round-trips.
-- **Fix:** Single JOIN query returning sessions + aggregated counts.
-- **Effort:** XS (~15 min)
+---
+
+## 🔴 TIER 1 — High ROI, Low Effort (Still Open)
+
+> These were identified in the original audit but not addressed in PR #33.
 
 ### 1.2 Backend: Public Listing Ownership Bypass
 - **File:** `server/app/services/session_store.py:272-306`
 - **Issue:** `get_public_listing()` and `list_recent_public_listings()` do NOT filter by `owner_uid`. Any authenticated user can read any listing.
 - **Fix:** Add `owner_uid` parameter/validation to both methods.
 - **Effort:** XS (~20 min)
-
-### 1.3 Backend: CSV Injection in eBay Export
-- **File:** `server/app/services/marketplace_ebay_service.py:20-23`
-- **Issue:** `export_csv()` only escapes double quotes. A title like `=CMD|'!A1` becomes an executable formula in Excel. Newlines are also unescaped.
-- **Fix:** Prefix risky cells with `'` or sanitize formula-triggering characters (`=`, `+`, `-`, `@`, `\t`, `\n`).
-- **Effort:** XS (~15 min)
 
 ### 1.4 Backend: Firebase Admin Init Race Condition
 - **File:** `server/app/security/firebase.py:103-107, 126-130`
@@ -105,86 +81,17 @@
 - **Fix:** Move to `@lru_cache` factory + `Depends()`, matching pattern in `sessions.py`.
 - **Effort:** XS (~10 min)
 
-### 1.7 Backend: Path Traversal via Symlinks in Uploads
-- **File:** `server/app/services/analysis_adapter.py:215-227`
-- **Issue:** `candidate.relative_to(self.upload_dir.resolve())` blocks `..` traversal but NOT symlink escapes. A symlink inside `upload_dir` pointing to `/etc/passwd` would be served.
-- **Fix:** Use `os.path.realpath()` and verify the resolved path is still under `upload_dir`.
-- **Effort:** XS (~15 min)
-
-### 1.8 Backend: Unbounded Memory for Base64 Encoding
-- **File:** `server/app/services/analysis_adapter.py:226`
-- **Issue:** `_image_data_url()` calls `candidate.read_bytes()`, loading the entire image into RAM. No size cap.
-- **Fix:** Reject files > 5MB before reading; stream large files instead.
-- **Effort:** XS (~15 min)
-
-### 1.9 Frontend: `setState() after dispose()` in 4 Async Methods
-- **File:** `app/lib/src/features/session/presentation/session_timer_screen.dart:74-77, 193-196, 226-229, 301-305`
-- **Issue:** `_bootstrapCashToClearSession`, `_recordRemoteDecision`, `_flushPendingRemoteDecisions`, `_createPublicListingPage` all call `setState()` **before** the first `await` without checking `mounted`.
-- **Impact:** Crash if widget is disposed while async gap elapses.
-- **Fix:** Add `if (!mounted) return;` before every `setState()` inside async methods.
-- **Effort:** XS (~20 min)
-
-### 1.10 Frontend: `setState() after dispose()` in `CaptureScreen`
-- **File:** `app/lib/src/features/capture/presentation/capture_screen.dart:95-103, 141-154`
-- **Issue:** `PlatformException` and `CameraException` catch blocks call `setState()` without checking `mounted`.
-- **Fix:** Add `if (!mounted) return;` before each `setState()` in catch blocks.
-- **Effort:** XS (~10 min)
-
-### 1.11 Frontend: `FocusTimer` `setState()` after dispose() on Resume
-- **File:** `app/lib/src/features/session/presentation/widgets/focus_timer.dart:45`
-- **Issue:** `didChangeAppLifecycleState` calls `setState()` without a `mounted` check. If the route is popped while backgrounded, resuming triggers a crash.
-- **Fix:** Add `if (!mounted) return;` before `setState()` in `didChangeAppLifecycleState`.
-- **Effort:** XS (~5 min)
-
-### 1.12 Frontend: `Timer.periodic` Can Execute After `dispose()`
-- **File:** `app/lib/src/features/session/presentation/widgets/focus_timer.dart:84-104`
-- **Issue:** The timer callback can execute after `dispose()` has been called but before reaching the `if (!mounted)` guard. Also, timer drift accumulates because it subtracts 1s per tick instead of comparing against a `DateTime` target.
-- **Fix:** Cancel timer in `dispose()` (already done, but also set a `_isDisposed` flag); use `DateTime` target math instead of decrementing.
-- **Effort:** S (~30 min)
-
-### 1.13 Frontend: `FocusTimer` Loses State on Process Death
-- **File:** `app/lib/src/features/session/presentation/widgets/focus_timer.dart`
-- **Issue:** `didChangeAppLifecycleState` handles `paused`/`resumed`, but if the OS kills the app (low memory), `_remaining` and `_isRunning` are lost.
-- **Impact:** Timer resets to 10:00 mid-session. Breaks ADHD timeboxing promise.
-- **Fix:** Persist `_remaining`, `_isRunning`, and `_backgroundedAt` to `SharedPreferences` in `paused`, restore in `initState`.
-- **Effort:** S (~30 min)
-
 ### 1.14 Frontend: `CashToClearApiClient` Has No Request Timeout
 - **File:** `app/lib/src/features/session/services/cash_to_clear_api.dart:122-148`
 - **Issue:** `connectionTimeout` and `idleTimeout` are set on `HttpClient`, but `openUrl` + `close()` has no per-request timeout. A hung backend blocks the UI thread indefinitely.
 - **Fix:** Wrap `_requestJson` in `Future.timeout(const Duration(seconds: 15))`.
 - **Effort:** XS (~10 min)
 
-### 1.15 Frontend: `CashToClearApiClient` No Response Size Limit
-- **File:** `app/lib/src/features/session/services/cash_to_clear_api.dart:132-133`
-- **Issue:** Response body is consumed with `response.transform(utf8.decoder).join()` with **no size limit**. A malicious or buggy server can stream an infinite response, exhausting memory.
-- **Fix:** Cap response body at ~1MB before decoding; throw if exceeded.
-- **Effort:** XS (~15 min)
-
-### 1.16 Frontend: Decision Spam Bug (Same Group, Infinite Decisions)
-- **File:** `app/lib/src/features/session/presentation/session_timer_screen.dart:146-158`
-- **Issue:** Tapping "Keep" 50 times on the same group creates 50 decisions. Progress shows `50/5 sorted`. No deduplication.
-- **Impact:** Corrupts session history, summary counts, and backend sync.
-- **Fix:** Check if group already has a decision; replace instead of append, or increment a counter.
-- **Effort:** XS (~20 min)
-
 ### 1.17 Frontend: `CaptureScreen` Silently Swallows Analysis Errors
 - **File:** `app/lib/src/features/capture/presentation/capture_screen.dart:167-168`
 - **Issue:** `unawaited(_analyzeCapture(capture))` — if detection throws, the error is logged and lost. User sees "Photo saved" but analysis silently failed.
 - **Fix:** Wrap in try/catch and show SnackBar on failure, or await and show inline error.
 - **Effort:** XS (~15 min)
-
-### 1.18 Frontend: Camera Disposed on System Dialogs (`inactive` vs `paused`)
-- **File:** `app/lib/src/features/capture/presentation/capture_screen.dart:55-67`
-- **Issue:** `didChangeAppLifecycleState` disposes camera on `inactive`. On iOS, permission prompts and system dialogs trigger `inactive`, killing the camera unnecessarily.
-- **Fix:** Only dispose on `paused` (or `detached`), not `inactive`.
-- **Effort:** XS (~10 min)
-
-### 1.19 Frontend: `Image.file` Re-Decodes JPEG on Every `setState`
-- **File:** `app/lib/src/features/capture/presentation/capture_screen.dart:296`
-- **Issue:** `Image.file(File(capture.path))` is used inside a `Stack` without any image caching. Every `setState` (e.g., analysis progress updates) re-reads the JPEG from disk and re-decodes it, causing frame drops.
-- **Fix:** Use `Image.file(..., cacheWidth: 800)` or wrap in `ImageCache`.
-- **Effort:** XS (~10 min)
 
 ### 1.20 Frontend: Timer Doesn't Pause/Reset on Completion
 - **File:** `app/lib/src/features/session/presentation/session_timer_screen.dart:331-338`
@@ -196,14 +103,14 @@
 
 ## 🟠 TIER 2 — High Leverage (Architectural, Unlocks Future Work)
 
-> These are medium effort but unblock entire work packages or prevent entire classes of bugs.
-
 ### 2.1 WP3: Drift/SQLite Persistence (Sessions & Decisions Survive Restarts)
+- **Status:** Partially addressed. `FocusTimer` now persists via `SharedPreferences`. Full session/decision persistence still requires `drift`.
 - **Files:** New `app/lib/src/data/db/`, refactor `session_timer_screen.dart`
 - **Issue:** All session data is in-memory. Kill app = total data loss. MVP spec §6.2 requires SQLite.
 - **Impact:** Core MVP requirement. Blocks history, summary, and CSV export.
 - **Leverage:** Unlocks WP4 (Decision Card), WP6 (Summary + CSV), and WP8 (History screen).
 - **Effort:** M (1-2 days)
+- **Note:** Drift was added then removed in PR #33 because CI cannot run `build_runner`. Reintroduction requires committing generated `.g.dart` files.
 
 ### 2.2 Extract State Management from `SessionTimerScreen`
 - **File:** `app/lib/src/features/session/presentation/session_timer_screen.dart` (1,137 lines)
@@ -220,6 +127,7 @@
 - **Effort:** S (~2-3 hours)
 
 ### 2.4 WP1: ONNX Runtime Abstraction (Replace TFLite)
+- **Status:** Partially addressed. `OnnxDetectionInterpreter` adapter exists with `TensorType` enum. Not yet wired as default.
 - **Files:** `app/lib/src/features/detect/services/`, `pubspec.yaml`
 - **Issue:** `tflite_flutter` is AGPL-adjacent (Ultralytics YOLO ecosystem), crashes on web, and blocks iOS Simulator. Implementation plan mandates ONNX.
 - **Impact:** Legal compliance, web compatibility, real model loading.
@@ -257,6 +165,7 @@
 - **Issue:** `dart:io Platform`, `File`, `HttpClient`, and `tflite_flutter` imports will crash on web builds.
 - **Impact:** Cannot compile for web/PWA.
 - **Effort:** S (~1/2 day) — mostly `kIsWeb` branches and conditional imports.
+- **Note:** Partially addressed in PR #33 with conditional imports and mock fallbacks.
 
 ### 3.5 Backend: Test Coverage Gaps
 - **Files:** `server/tests/`
@@ -269,12 +178,6 @@
 - **Issue:** No semantic labels on decision buttons. Touch targets not verified ≥48dp. No haptic feedback on decisions (MVP §3.3).
 - **Impact:** App Store rejection risk, exclusion of motor-impaired users.
 - **Effort:** S (~1/2 day)
-
-### 3.7 Backend: SQLite WAL Mode + Composite Queries
-- **File:** `server/app/services/session_store.py:541-544`
-- **Issue:** `PRAGMA foreign_keys = ON` is set, but `journal_mode=WAL` is missing, creating write-lock contention under concurrent load.
-- **Fix:** Add `PRAGMA journal_mode=WAL` in `_ensure_schema()`.
-- **Effort:** XS (~5 min)
 
 ### 3.8 Backend: Signed-Upload Session is Non-Functional
 - **File:** `server/app/api/routes/analysis.py:46-49, 52-58`
@@ -318,18 +221,18 @@
 
 ## Summary: What to Do Next
 
-1. **Today (2 hours):** Knock out Tier 0 + Tier 1 — they're all tiny, high-impact, and many are security-critical.
+1. **Today (1 hour):** Knock out remaining Tier 1 items (1.2, 1.4, 1.5, 1.6, 1.14, 1.17, 1.20) — all XS effort.
 2. **This Week:** WP3 (Drift persistence) — it unlocks history, summary, and CSV.
-3. **Next Sprint:** WP1 (ONNX abstraction) — unblocks real inference and web builds.
+3. **Next Sprint:** WP1 (ONNX full wiring) — unblocks real inference and web builds.
 4. **Then:** WP2 → WP4 → WP5 → WP6 in dependency order.
 
 The full dependency graph:
 ```
-Tier 0+1 fixes (parallel) ────────────────────────────┐
-WP1 (ONNX) ─┐                                         │
-            ├─► WP2 (Moondream) ─┐                   ├──► WP8 (Polish)
-WP3 (Drift) ─┤                  ├─► WP5 (Valuation) ─┤
-             └─► WP4 (Decision) ─┘                   │
-                                                    ├──► WP6 (Summary + CSV)
-WP7 (Server) depends on WP5 ────────────────────────┘
+Tier 1 fixes (parallel) ───────────────────────────────┐
+WP1 (ONNX full wiring) ─┐                              │
+                        ├─► WP2 (Moondream) ─┐        ├──► WP8 (Polish)
+WP3 (Drift) ────────────┤                  ├─► WP5 (Valuation) ─┤
+                        └─► WP4 (Decision) ─┘        │
+                                                     ├──► WP6 (Summary + CSV)
+WP7 (Server) depends on WP5 ─────────────────────────┘
 ```
