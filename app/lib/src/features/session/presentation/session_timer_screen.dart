@@ -2,11 +2,14 @@ import 'dart:io' show File;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../grouping/domain/detection_group.dart';
 import '../../grouping/domain/grouped_detection_result.dart';
 import '../domain/session_decision.dart';
 import '../services/cash_to_clear_api.dart';
+import 'session_controller.dart';
+import 'session_state.dart';
 import 'widgets/focus_timer.dart';
 import 'widgets/quick_start_card.dart';
 
@@ -16,132 +19,58 @@ class SessionTimerScreen extends StatefulWidget {
     this.capturedImagePath,
     this.capturedAt,
     this.groupedResult = const GroupedDetectionResult.empty(),
-    this.cashToClearApi,
+    this.controller,
   });
 
   final String? capturedImagePath;
   final DateTime? capturedAt;
   final GroupedDetectionResult groupedResult;
-  final CashToClearApiClient? cashToClearApi;
+  final SessionController? controller;
 
   @override
   State<SessionTimerScreen> createState() => _SessionTimerScreenState();
 }
 
 class _SessionTimerScreenState extends State<SessionTimerScreen> {
-  final List<SessionDecision> _decisions = [];
-  final Map<String, CashToClearItemDto> _remoteItemsByGroupId = {};
-  final Map<String, String> _publicListingUrlsByGroupId = {};
-  final Set<String> _creatingListingPageGroupIds = {};
-  final List<_PendingRemoteDecision> _pendingRemoteDecisions = [];
-  String? _selectedGroupId;
-  late final CashToClearApiClient _cashToClearApi;
-  String? _remoteSessionId;
-  double? _moneyOnTableLowUsd;
-  double? _moneyOnTableHighUsd;
-  bool _isSyncingCashToClear = false;
-  String? _cashToClearSyncMessage;
-  bool _ownsCashToClearApi = false;
-  bool _isSprintCompleted = false;
+  late final SessionController _controller;
+  bool _ownsController = false;
 
   @override
   void initState() {
     super.initState();
-    _ownsCashToClearApi = widget.cashToClearApi == null;
-    _cashToClearApi =
-        widget.cashToClearApi ?? CashToClearApiClient.fromEnvironment();
-    if (widget.groupedResult.hasGroups) {
-      _selectedGroupId = widget.groupedResult.primaryGroup?.id;
-    }
-    _bootstrapCashToClearSession();
+    _ownsController = widget.controller == null;
+    _controller = widget.controller ??
+        SessionController(
+          groupedResult: widget.groupedResult,
+        );
   }
 
   @override
   void dispose() {
-    if (_ownsCashToClearApi) {
-      _cashToClearApi.dispose();
+    if (_ownsController) {
+      _controller.dispose();
     }
     super.dispose();
   }
 
-  Future<void> _bootstrapCashToClearSession() async {
-    if (!_cashToClearApi.isConfigured || !widget.groupedResult.hasGroups) {
-      _cashToClearSyncMessage = _cashToClearApi.isConfigured
-          ? 'Cash-to-Clear backend is ready. Capture detections to sync values.'
-          : 'Local mode: add DECLUTTER_API_BASE_URL, DECLUTTER_ID_TOKEN, and DECLUTTER_APP_CHECK_TOKEN to sync values.';
-      return;
-    }
-
-    if (!mounted) return;
-    setState(() {
-      _isSyncingCashToClear = true;
-      _cashToClearSyncMessage = 'Syncing Cash-to-Clear values...';
-    });
-
-    try {
-      final session = await _cashToClearApi.createSession();
-      final remoteItems = <String, CashToClearItemDto>{};
-      final groups = widget.groupedResult.groups;
-      final syncedItems = await Future.wait(
-        groups.map(
-          (group) => _cashToClearApi.addItem(
-            sessionId: session.sessionId,
-            label: group.displayLabel,
-            condition: 'unknown',
-          ),
-        ),
-      );
-
-      for (var index = 0; index < groups.length; index++) {
-        remoteItems[groups[index].id] = syncedItems[index];
-      }
-
-      final refreshed = await _cashToClearApi.getSession(session.sessionId);
-      if (!mounted) return;
-      setState(() {
-        _remoteSessionId = refreshed.sessionId;
-        _remoteItemsByGroupId
-          ..clear()
-          ..addAll(remoteItems);
-        _moneyOnTableLowUsd = refreshed.moneyOnTableLowUsd;
-        _moneyOnTableHighUsd = refreshed.moneyOnTableHighUsd;
-        _isSyncingCashToClear = false;
-        _cashToClearSyncMessage = 'Cash-to-Clear values synced.';
-      });
-      await _flushPendingRemoteDecisions();
-    } catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _isSyncingCashToClear = false;
-        _cashToClearSyncMessage = 'Local mode: backend sync failed ($error).';
-      });
-    }
-  }
-
   Future<void> _handleDecision(DecisionCategory category) async {
-    final selectedGroup = widget.groupedResult.groupForId(_selectedGroupId);
-    if (selectedGroup == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content:
-                Text('Select a highlighted group before logging a decision.')),
-      );
+    final error = _controller.validateDecision(category);
+    if (error != null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error)),
+        );
+      }
       return;
     }
 
-    final alreadyDecided = _decisions.any(
-      (d) => d.groupId == selectedGroup.id && d.category == category,
-    );
-    if (alreadyDecided) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'You already decided "${category.label}" for ${selectedGroup.friendlyLabel}.',
-          ),
-        ),
-      );
-      return;
-    }
+    final selectedGroup =
+        _controller.groupedResult.groupForId(_controller.selectedGroupId);
+    if (selectedGroup == null) return;
+
+    final progress = _controller.state is SessionActive
+        ? (_controller.state as SessionActive).decisionCountForGroup(selectedGroup.id)
+        : 0;
 
     final note = await showModalBottomSheet<String>(
       context: context,
@@ -149,9 +78,7 @@ class _SessionTimerScreenState extends State<SessionTimerScreen> {
       builder: (context) => _DecisionNoteSheet(
         category: category,
         group: selectedGroup,
-        progress: _decisions
-            .where((decision) => decision.groupId == selectedGroup.id)
-            .length,
+        progress: progress,
       ),
     );
 
@@ -159,200 +86,13 @@ class _SessionTimerScreenState extends State<SessionTimerScreen> {
       return;
     }
 
-    setState(() {
-      _decisions.insert(
-        0,
-        SessionDecision(
-          groupId: selectedGroup.id,
-          groupLabel: selectedGroup.friendlyLabel,
-          groupTotal: selectedGroup.count,
-          category: category,
-          createdAt: DateTime.now(),
-          note: note.isEmpty ? null : note,
-        ),
-      );
-    });
-
-    await _recordRemoteDecision(
-      group: selectedGroup,
-      category: category,
-      note: note.isEmpty ? null : note,
-    );
-  }
-
-  Future<void> _recordRemoteDecision({
-    required DetectionGroup group,
-    required DecisionCategory category,
-    String? note,
-  }) async {
-    final sessionId = _remoteSessionId;
-    final remoteItem = _remoteItemsByGroupId[group.id];
-    if (!_cashToClearApi.isConfigured) {
-      return;
-    }
-
-    final pending = _PendingRemoteDecision(
-      groupId: group.id,
-      category: category,
-      note: note,
-    );
-
-    if (sessionId == null || remoteItem == null) {
-      _pendingRemoteDecisions.add(pending);
-      setState(() {
-        _cashToClearSyncMessage =
-            'Decision queued until Cash-to-Clear sync is ready.';
-      });
-      return;
-    }
-
-    if (!mounted) return;
-    setState(() {
-      _isSyncingCashToClear = true;
-      _cashToClearSyncMessage = 'Saving decision to Cash-to-Clear...';
-    });
-
-    try {
-      await _syncRemoteDecision(pending);
-      final refreshed = await _cashToClearApi.getSession(sessionId);
-      if (!mounted) return;
-      setState(() {
-        _moneyOnTableLowUsd = refreshed.moneyOnTableLowUsd;
-        _moneyOnTableHighUsd = refreshed.moneyOnTableHighUsd;
-        _isSyncingCashToClear = false;
-        _cashToClearSyncMessage = 'Decision synced.';
-      });
-    } catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _isSyncingCashToClear = false;
-        _cashToClearSyncMessage =
-            'Decision saved locally; backend sync failed ($error).';
-      });
-    }
-  }
-
-  Future<void> _flushPendingRemoteDecisions() async {
-    if (!_cashToClearApi.isConfigured || _pendingRemoteDecisions.isEmpty) {
-      return;
-    }
-
-    final pending = List<_PendingRemoteDecision>.from(_pendingRemoteDecisions);
-    _pendingRemoteDecisions.clear();
-
-    if (!mounted) return;
-    setState(() {
-      _isSyncingCashToClear = true;
-      _cashToClearSyncMessage = 'Syncing queued decisions...';
-    });
-
-    var syncedCount = 0;
-    try {
-      for (final decision in pending) {
-        if (_remoteItemsByGroupId[decision.groupId] == null) {
-          _pendingRemoteDecisions.add(decision);
-          continue;
-        }
-        await _syncRemoteDecision(decision);
-        syncedCount++;
-      }
-
-      final sessionId = _remoteSessionId;
-      final refreshed = sessionId == null
-          ? null
-          : await _cashToClearApi.getSession(sessionId);
-      if (!mounted) return;
-      setState(() {
-        if (refreshed != null) {
-          _moneyOnTableLowUsd = refreshed.moneyOnTableLowUsd;
-          _moneyOnTableHighUsd = refreshed.moneyOnTableHighUsd;
-        }
-        _isSyncingCashToClear = false;
-        _cashToClearSyncMessage = _pendingRemoteDecisions.isEmpty
-            ? 'Queued decisions synced.'
-            : 'Some decisions are still queued for sync.';
-      });
-    } catch (error) {
-      final failed = pending.skip(syncedCount);
-      for (final decision in failed) {
-        if (!_pendingRemoteDecisions.any((p) => p.groupId == decision.groupId && p.category == decision.category)) {
-          _pendingRemoteDecisions.add(decision);
-        }
-      }
-      if (!mounted) return;
-      setState(() {
-        _isSyncingCashToClear = false;
-        _cashToClearSyncMessage =
-            'Decision saved locally; queued sync failed ($error).';
-      });
-    }
-  }
-
-  Future<void> _syncRemoteDecision(_PendingRemoteDecision decision) async {
-    final sessionId = _remoteSessionId;
-    final remoteItem = _remoteItemsByGroupId[decision.groupId];
-    if (sessionId == null || remoteItem == null) {
-      throw const CashToClearApiException('Remote session is not ready.');
-    }
-
-    await _cashToClearApi.recordDecision(
-      sessionId: sessionId,
-      itemId: remoteItem.itemId,
-      category: decision.category,
-      note: decision.note,
-    );
-  }
-
-  Future<void> _createPublicListingPage(String groupId) async {
-    final sessionId = _remoteSessionId;
-    final remoteItem = _remoteItemsByGroupId[groupId];
-    if (!_cashToClearApi.isConfigured ||
-        sessionId == null ||
-        remoteItem == null) {
-      if (!mounted) return;
-      setState(() {
-        _cashToClearSyncMessage =
-            'Sync Cash-to-Clear values before creating a page.';
-      });
-      return;
-    }
-
-    if (!mounted) return;
-    setState(() {
-      _isSyncingCashToClear = true;
-      _creatingListingPageGroupIds.add(groupId);
-      _cashToClearSyncMessage = 'Creating standalone listing page...';
-    });
-
-    try {
-      final listing = await _cashToClearApi.createPublicListing(
-        sessionId: sessionId,
-        itemId: remoteItem.itemId,
-      );
-      if (!mounted) return;
-      setState(() {
-        _publicListingUrlsByGroupId[groupId] = listing.publicUrl;
-        _creatingListingPageGroupIds.remove(groupId);
-        _isSyncingCashToClear = false;
-        _cashToClearSyncMessage = 'Standalone listing page created.';
-      });
-    } catch (error) {
-      debugPrint('Cash-to-Clear public listing creation failed: $error');
-      if (!mounted) return;
-      setState(() {
-        _creatingListingPageGroupIds.remove(groupId);
-        _isSyncingCashToClear = false;
-        _cashToClearSyncMessage =
-            'Could not create listing page. Please try again.';
-      });
-    }
+    await _controller.addDecision(category, note);
+    HapticFeedback.lightImpact();
   }
 
   void _handleTimerCompleted() {
+    _controller.completeSprint();
     if (!mounted) return;
-    setState(() {
-      _isSprintCompleted = true;
-    });
     showModalBottomSheet(
       context: context,
       showDragHandle: true,
@@ -360,94 +100,84 @@ class _SessionTimerScreenState extends State<SessionTimerScreen> {
       builder: (_) => _TimerCompleteSheet(
         onStartNewSprint: () {
           Navigator.of(context).pop();
-          _resetSprint();
+          _controller.resetSprint();
         },
       ),
     );
   }
 
-  void _resetSprint() {
-    setState(() {
-      _isSprintCompleted = false;
-      _decisions.clear();
-      _selectedGroupId =
-          widget.groupedResult.hasGroups ? widget.groupedResult.primaryGroup?.id : null;
-      _moneyOnTableLowUsd = null;
-      _moneyOnTableHighUsd = null;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('10-Min Declutter Sprint'),
-        centerTitle: true,
-      ),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            if (widget.capturedImagePath != null)
-              _CapturedPhotoPreview(
-                imagePath: widget.capturedImagePath!,
-                capturedAt: widget.capturedAt,
-              ),
-            const QuickStartCard(),
-            const SizedBox(height: 16),
-            CashToClearStatusCard(
-              isSyncing: _isSyncingCashToClear,
-              message: _cashToClearSyncMessage,
-              moneyOnTableLowUsd: _moneyOnTableLowUsd,
-              moneyOnTableHighUsd: _moneyOnTableHighUsd,
-              remoteItemsByGroupId: _remoteItemsByGroupId,
-              publicListingUrlsByGroupId: _publicListingUrlsByGroupId,
-              creatingListingPageGroupIds: _creatingListingPageGroupIds,
-              groupedResult: widget.groupedResult,
-              onCreateListingPage: _createPublicListingPage,
+    return ListenableBuilder(
+      listenable: _controller,
+      builder: (context, _) {
+        final state = _controller.state;
+        final activeState = state is SessionActive ? state : null;
+
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('10-Min Declutter Sprint'),
+            centerTitle: true,
+          ),
+          body: SafeArea(
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                if (widget.capturedImagePath != null)
+                  _CapturedPhotoPreview(
+                    imagePath: widget.capturedImagePath!,
+                    capturedAt: widget.capturedAt,
+                  ),
+                const QuickStartCard(),
+                const SizedBox(height: 16),
+                if (activeState != null)
+                  CashToClearStatusCard(
+                    isSyncing: activeState.isSyncingCashToClear,
+                    message: activeState.cashToClearSyncMessage,
+                    moneyOnTableLowUsd: activeState.moneyOnTableLowUsd,
+                    moneyOnTableHighUsd: activeState.moneyOnTableHighUsd,
+                    remoteItemsByGroupId: activeState.remoteItemsByGroupId,
+                    publicListingUrlsByGroupId:
+                        activeState.publicListingUrlsByGroupId,
+                    creatingListingPageGroupIds:
+                        activeState.creatingListingPageGroupIds,
+                    groupedResult: activeState.groupedResult,
+                    onCreateListingPage: _controller.createPublicListingPage,
+                  ),
+                const SizedBox(height: 24),
+                FocusTimer(onCompleted: _handleTimerCompleted),
+                const SizedBox(height: 24),
+                if (activeState != null)
+                  SessionDecisionComposer(
+                    groupedResult: activeState.groupedResult,
+                    selectedGroupId: activeState.selectedGroupId,
+                    onGroupSelected: _controller.selectGroup,
+                    decisions: activeState.decisions,
+                    onCategorySelected: _handleDecision,
+                  ),
+                const SizedBox(height: 16),
+                if (activeState != null)
+                  SessionDecisionHistory(
+                    decisions: activeState.decisions,
+                    groupedResult: activeState.groupedResult,
+                  ),
+                const SizedBox(height: 16),
+                if (activeState != null)
+                  SessionSummaryCard(
+                    decisions: activeState.decisions,
+                    groupedResult: activeState.groupedResult,
+                    moneyOnTableLowUsd: activeState.moneyOnTableLowUsd,
+                    moneyOnTableHighUsd: activeState.moneyOnTableHighUsd,
+                    publicListingUrlsByGroupId:
+                        activeState.publicListingUrlsByGroupId,
+                  ),
+              ],
             ),
-            const SizedBox(height: 24),
-            FocusTimer(onCompleted: _handleTimerCompleted),
-            const SizedBox(height: 24),
-            SessionDecisionComposer(
-              groupedResult: widget.groupedResult,
-              selectedGroupId: _selectedGroupId,
-              onGroupSelected: (groupId) {
-                setState(() => _selectedGroupId = groupId);
-              },
-              decisions: _decisions,
-              onCategorySelected: _handleDecision,
-            ),
-            const SizedBox(height: 16),
-            SessionDecisionHistory(
-              decisions: _decisions,
-              groupedResult: widget.groupedResult,
-            ),
-            const SizedBox(height: 16),
-            SessionSummaryCard(
-              decisions: _decisions,
-              groupedResult: widget.groupedResult,
-              moneyOnTableLowUsd: _moneyOnTableLowUsd,
-              moneyOnTableHighUsd: _moneyOnTableHighUsd,
-              publicListingUrlsByGroupId: _publicListingUrlsByGroupId,
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
-}
-
-class _PendingRemoteDecision {
-  const _PendingRemoteDecision({
-    required this.groupId,
-    required this.category,
-    this.note,
-  });
-
-  final String groupId;
-  final DecisionCategory category;
-  final String? note;
 }
 
 class _CapturedPhotoPreview extends StatelessWidget {
@@ -472,6 +202,15 @@ class _CapturedPhotoPreview extends StatelessWidget {
                 File(imagePath),
                 fit: BoxFit.cover,
                 height: 180,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  height: 180,
+                  alignment: Alignment.center,
+                  padding: const EdgeInsets.all(16),
+                  child: const Text(
+                    'Photo preview unavailable. The captured file may have been removed by the system.',
+                    textAlign: TextAlign.center,
+                  ),
+                ),
               ),
             )
           else
@@ -746,13 +485,26 @@ class SessionDecisionComposer extends StatelessWidget {
               runSpacing: 12,
               children: DecisionCategory.values
                   .map(
-                    (category) => FilledButton.tonalIcon(
-                      onPressed:
-                          !groupedResult.hasGroups || selectedGroupId == null
-                              ? null
-                              : () => onCategorySelected(category),
-                      icon: Icon(category.icon),
-                      label: Text(category.label),
+                    (category) => Semantics(
+                      button: true,
+                      label: '${category.label} decision',
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(
+                          minWidth: 48,
+                          minHeight: 48,
+                        ),
+                        child: FilledButton.tonalIcon(
+                          onPressed:
+                              !groupedResult.hasGroups || selectedGroupId == null
+                                  ? null
+                                  : () => onCategorySelected(category),
+                          icon: Icon(category.icon),
+                          label: Text(category.label),
+                          style: FilledButton.styleFrom(
+                            minimumSize: const Size(48, 48),
+                          ),
+                        ),
+                      ),
                     ),
                   )
                   .toList(),

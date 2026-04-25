@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show File;
 
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
@@ -25,6 +26,7 @@ class _CaptureScreenState extends State<CaptureScreen>
   CameraController? _controller;
   XFile? _lastCapture;
   Uint8List? _lastCaptureBytes;
+  String? _lastCapturePersistentPath;
   bool _isRequesting = true;
   bool _permissionDenied = false;
   bool _cameraUnavailable = false;
@@ -177,9 +179,25 @@ class _CaptureScreenState extends State<CaptureScreen>
       if (!mounted) return;
       final bytes = await capture.readAsBytes();
       if (!mounted) return;
+
+      String? persistentPath;
+      if (!kIsWeb) {
+        try {
+          final original = File(capture.path);
+          final destDir = original.parent;
+          final timestamp = DateTime.now().millisecondsSinceEpoch;
+          persistentPath = '${destDir.path}/declutter_capture_$timestamp.jpg';
+          await original.copy(persistentPath);
+        } catch (e) {
+          debugPrint('Failed to persist capture: $e');
+          persistentPath = capture.path;
+        }
+      }
+
       setState(() {
         _lastCapture = capture;
         _lastCaptureBytes = bytes;
+        _lastCapturePersistentPath = persistentPath;
       });
       if (!kIsWeb) {
         unawaited(_analyzeCaptureWithFeedback(capture));
@@ -199,8 +217,8 @@ class _CaptureScreenState extends State<CaptureScreen>
   }
 
   void _openSessionTimer() {
-    final capture = _lastCapture;
-    if (capture == null) {
+    final path = _lastCapturePersistentPath ?? _lastCapture?.path;
+    if (path == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
             content: Text('Capture a photo first to start sorting.')),
@@ -211,7 +229,7 @@ class _CaptureScreenState extends State<CaptureScreen>
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => SessionTimerScreen(
-          capturedImagePath: capture.path,
+          capturedImagePath: path,
           capturedAt: DateTime.now(),
           groupedResult: _groupedResult,
         ),
@@ -549,38 +567,42 @@ class _CaptureScreenState extends State<CaptureScreen>
       appBar: AppBar(
         title: const Text('Capture clutter zone'),
         actions: [
-          IconButton(
-            onPressed: () {
-              showModalBottomSheet(
-                context: context,
-                showDragHandle: true,
-                builder: (_) {
-                  return const Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Quick capture checklist',
-                          style: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
-                        SizedBox(height: 12),
-                        Text('• Pick a single shelf, drawer, or desk zone.'),
-                        SizedBox(height: 8),
-                        Text('• Clear big distractions (coffee cups, cords).'),
-                        SizedBox(height: 8),
-                        Text(
-                            '• Breathe. One photo now; decisions happen next.'),
-                      ],
-                    ),
-                  );
-                },
-              );
-            },
-            icon: const Icon(Icons.help_outline),
-            tooltip: 'Capture tips',
+          Semantics(
+            button: true,
+            label: 'Capture tips',
+            child: IconButton(
+              onPressed: () {
+                showModalBottomSheet(
+                  context: context,
+                  showDragHandle: true,
+                  builder: (_) {
+                    return const Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Quick capture checklist',
+                            style: TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                          SizedBox(height: 12),
+                          Text('• Pick a single shelf, drawer, or desk zone.'),
+                          SizedBox(height: 8),
+                          Text('• Clear big distractions (coffee cups, cords).'),
+                          SizedBox(height: 8),
+                          Text(
+                              '• Breathe. One photo now; decisions happen next.'),
+                        ],
+                      ),
+                    );
+                  },
+                );
+              },
+              icon: const Icon(Icons.help_outline),
+              tooltip: 'Capture tips',
+            ),
           ),
         ],
       ),

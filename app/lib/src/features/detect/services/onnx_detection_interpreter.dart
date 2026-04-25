@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:onnxruntime/onnxruntime.dart';
@@ -82,13 +84,53 @@ class OnnxDetectionInterpreter implements DetectionInterpreter {
 
   @override
   void run(Object input, Map<int, Object> outputs) {
-    // TODO: DetectionInterpreter.run() is synchronous but ONNX only provides
-    // runAsync(). When ONNX is adopted, the interface needs to become async.
     throw UnsupportedError(
-      'ONNX inference requires an async run() interface. '
-      'Update DetectionInterpreter.run() to return Future<void> and '
-      'propagate async through DetectorService.',
+      'ONNX inference is async-only. Use runAsync() instead.',
     );
+  }
+
+  @override
+  Future<void> runAsync(Object input, Map<int, Object> outputs) async {
+    final flatInput = _flattenToDoubleList(input);
+    final inputValue = OrtValueTensor.createTensorWithDataList(
+      [Float32List.fromList(flatInput)],
+      inputShape,
+    );
+    final runOptions = OrtRunOptions();
+
+    final result = await _session.runAsync(
+      runOptions,
+      {_session.inputNames.first: inputValue},
+      _outputNames,
+    );
+
+    runOptions.release();
+    inputValue.release();
+
+    if (result != null) {
+      for (var i = 0; i < result.length; i++) {
+        final ortValue = result[i];
+        if (ortValue != null) {
+          outputs[i] = ortValue.value as Object;
+          ortValue.release();
+        }
+      }
+    }
+  }
+
+  static List<double> _flattenToDoubleList(Object input) {
+    final result = <double>[];
+    void visit(Object obj) {
+      if (obj is num) {
+        result.add(obj.toDouble());
+      } else if (obj is List) {
+        for (final item in obj) {
+          visit(item);
+        }
+      }
+    }
+    visit(input);
+    return result;
   }
 
   @override

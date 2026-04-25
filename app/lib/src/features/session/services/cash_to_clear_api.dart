@@ -1,5 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
+
 import '_http_client.dart' if (dart.library.html) '_http_client_web.dart';
 
 import '../domain/session_decision.dart';
@@ -44,7 +47,10 @@ class CashToClearApiClient {
   final HttpClient _httpClient;
 
   bool get isConfigured =>
-      baseUrl.isNotEmpty && _idToken.isNotEmpty && _appCheckToken.isNotEmpty;
+      !kIsWeb &&
+      baseUrl.isNotEmpty &&
+      _idToken.isNotEmpty &&
+      _appCheckToken.isNotEmpty;
 
   void dispose() {
     _httpClient.close();

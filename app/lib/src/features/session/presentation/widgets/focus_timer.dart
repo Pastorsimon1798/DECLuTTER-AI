@@ -247,16 +247,42 @@ class _FocusTimerState extends State<FocusTimer> with WidgetsBindingObserver {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                ElevatedButton.icon(
-                  onPressed: _toggleTimer,
-                  icon: Icon(_isRunning ? Icons.pause : Icons.play_arrow),
-                  label: Text(_isRunning ? 'Pause' : 'Start'),
+                Semantics(
+                  button: true,
+                  label: _isRunning ? 'Pause timer' : 'Start timer',
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      minWidth: 48,
+                      minHeight: 48,
+                    ),
+                    child: ElevatedButton.icon(
+                      onPressed: _toggleTimer,
+                      icon: Icon(_isRunning ? Icons.pause : Icons.play_arrow),
+                      label: Text(_isRunning ? 'Pause' : 'Start'),
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: const Size(48, 48),
+                      ),
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 12),
-                TextButton.icon(
-                  onPressed: _resetTimer,
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Reset'),
+                Semantics(
+                  button: true,
+                  label: 'Reset timer',
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      minWidth: 48,
+                      minHeight: 48,
+                    ),
+                    child: TextButton.icon(
+                      onPressed: _resetTimer,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Reset'),
+                      style: TextButton.styleFrom(
+                        minimumSize: const Size(48, 48),
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),

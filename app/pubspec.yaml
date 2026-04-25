@@ -19,6 +19,9 @@ dependencies:
   # drift: ^2.30.0
   # drift_flutter: ^0.3.0
   # sqlite3_flutter_libs: ^0.6.0
+  # Migration path: ONNX Runtime is the default inference backend.
+  # TFLite is retained as a fallback during the transition period and may be
+  # removed in a future release once ONNX coverage is verified on all targets.
   onnxruntime: ^1.4.1
 
 dev_dependencies:

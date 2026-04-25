@@ -120,6 +120,69 @@ void main() {
 
       await tempDir.delete(recursive: true);
     });
+
+    test('runs ONNX interpreter via runAsync and parses detections', () async {
+      final bundle = _MapAssetBundle({
+        'assets/model/labels.txt': 'apple\nbanana\ncarrot',
+        'assets/prompts/debug_sample_detections.json': '{"detections": []}',
+      });
+
+      final interpreter = _MockOnnxDetectionInterpreter();
+      final service = DetectorService(
+        bundle: bundle,
+        interpreter: interpreter,
+      );
+
+      final tempDir =
+          await Directory.systemTemp.createTemp('detector_service_onnx');
+      final imageFile = File('${tempDir.path}/fixture.png');
+      final generated = img.Image(width: 8, height: 8);
+      await imageFile.writeAsBytes(img.encodePng(generated));
+
+      final result = await service.detectOnImage(imageFile.path);
+
+      expect(result.isMocked, isFalse);
+      expect(result.detections, hasLength(1));
+      final detection = result.detections.first;
+      expect(detection.label, 'banana');
+      expect(detection.confidence, closeTo(0.87, 1e-3));
+      expect(detection.boundingBox.left, closeTo(0.2, 1e-6));
+      expect(detection.boundingBox.top, closeTo(0.1, 1e-6));
+      expect(detection.boundingBox.right, closeTo(0.75, 1e-6));
+      expect(detection.boundingBox.bottom, closeTo(0.65, 1e-6));
+      expect(interpreter.runAsyncCallCount, equals(1));
+
+      await tempDir.delete(recursive: true);
+    });
+
+    test('falls back to mock when ONNX runAsync throws', () async {
+      final bundle = _MapAssetBundle({
+        'assets/model/labels.txt': 'apple\nbanana',
+        'assets/prompts/debug_sample_detections.json':
+            '{"detections": [{"label": "apple", "confidence": 0.6, "box": {"left": 0.05, "top": 0.1, "right": 0.45, "bottom": 0.5}}]}',
+      });
+
+      final interpreter = _AsyncThrowingInterpreter();
+      final service = DetectorService(
+        bundle: bundle,
+        interpreter: interpreter,
+      );
+
+      final tempDir =
+          await Directory.systemTemp.createTemp('detector_service_onnx_throw');
+      final imageFile = File('${tempDir.path}/fixture.png');
+      final generated = img.Image(width: 8, height: 8);
+      await imageFile.writeAsBytes(img.encodePng(generated));
+
+      final result = await service.detectOnImage(imageFile.path);
+
+      expect(result.isMocked, isTrue);
+      expect(result.detections, hasLength(1));
+      expect(result.detections.first.label, 'apple');
+      expect(interpreter.runAsyncCallCount, greaterThan(0));
+
+      await tempDir.delete(recursive: true);
+    });
   });
 
   test('detector service keeps mock flag when interpreter throws', () async {
@@ -272,6 +335,11 @@ class _FixtureDetectionInterpreter implements DetectionInterpreter {
     final count = outputs[3] as List<dynamic>;
     count[0] = 1.0;
   }
+
+  @override
+  Future<void> runAsync(Object input, Map<int, Object> outputs) async {
+    run(input, outputs);
+  }
 }
 
 class _ThrowingInterpreter implements DetectionInterpreter {
@@ -296,6 +364,11 @@ class _ThrowingInterpreter implements DetectionInterpreter {
   @override
   void run(Object input, Map<int, Object> outputs) {
     throw StateError('inference failure');
+  }
+
+  @override
+  Future<void> runAsync(Object input, Map<int, Object> outputs) async {
+    run(input, outputs);
   }
 }
 
@@ -324,5 +397,118 @@ class _TrackingThrowingInterpreter implements DetectionInterpreter {
   void run(Object input, Map<int, Object> outputs) {
     runCallCount += 1;
     throw StateError('forced failure');
+  }
+
+  @override
+  Future<void> runAsync(Object input, Map<int, Object> outputs) async {
+    run(input, outputs);
+  }
+}
+
+class _MockOnnxDetectionInterpreter implements DetectionInterpreter {
+  _MockOnnxDetectionInterpreter()
+      : _boxesShape = const [1, 5, 4],
+        _classesShape = const [1, 5],
+        _scoresShape = const [1, 5],
+        _countShape = const [1];
+
+  final List<int> _boxesShape;
+  final List<int> _classesShape;
+  final List<int> _scoresShape;
+  final List<int> _countShape;
+
+  int runAsyncCallCount = 0;
+
+  @override
+  List<int> get inputShape => const [1, 4, 4, 3];
+
+  @override
+  TensorType get inputType => TensorType.float32;
+
+  @override
+  int get outputCount => 4;
+
+  @override
+  List<int> outputShape(int index) {
+    switch (index) {
+      case 0:
+        return _boxesShape;
+      case 1:
+        return _classesShape;
+      case 2:
+        return _scoresShape;
+      case 3:
+        return _countShape;
+      default:
+        throw RangeError.index(index, const []);
+    }
+  }
+
+  @override
+  TensorType outputType(int index) => TensorType.float32;
+
+  @override
+  void close() {}
+
+  @override
+  void run(Object input, Map<int, Object> outputs) {
+    throw UnsupportedError('ONNX is async-only');
+  }
+
+  @override
+  Future<void> runAsync(Object input, Map<int, Object> outputs) async {
+    runAsyncCallCount += 1;
+
+    // Mimic ONNX by returning brand-new nested list objects instead of
+    // mutating the pre-allocated buffers in-place.
+    outputs[0] = [
+      [
+        [0.1, 0.2, 0.65, 0.75],
+        [0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0, 0.0],
+      ],
+    ];
+    outputs[1] = [
+      [1.0, 0.0, 0.0, 0.0, 0.0],
+    ];
+    outputs[2] = [
+      [0.87, 0.0, 0.0, 0.0, 0.0],
+    ];
+    outputs[3] = [1.0];
+  }
+}
+
+class _AsyncThrowingInterpreter implements DetectionInterpreter {
+  int runAsyncCallCount = 0;
+
+  @override
+  List<int> get inputShape => const [1, 4, 4, 3];
+
+  @override
+  TensorType get inputType => TensorType.float32;
+
+  @override
+  int get outputCount => 4;
+
+  @override
+  List<int> outputShape(int index) => const [1, 5];
+
+  @override
+  TensorType outputType(int index) => TensorType.float32;
+
+  @override
+  void close() {}
+
+  @override
+  void run(Object input, Map<int, Object> outputs) {
+    throw UnsupportedError('async-only');
+  }
+
+  @override
+  Future<void> runAsync(Object input, Map<int, Object> outputs) async {
+    runAsyncCallCount += 1;
+    throw StateError('async inference failure');
   }
 }

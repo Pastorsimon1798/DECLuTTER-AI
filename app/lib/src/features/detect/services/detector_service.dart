@@ -9,7 +9,10 @@ import 'package:image/image.dart' as img;
 import '../domain/detection.dart';
 import 'detection_interpreter.dart';
 import 'image_tensor_builder.dart';
+import 'onnx_detection_interpreter.dart';
 import 'output_tensor_buffer.dart';
+import '_tflite_initializer.dart'
+    if (dart.library.html) '_tflite_initializer_web.dart';
 
 /// Loads the object detection model and produces debug detections.
 ///
@@ -24,10 +27,12 @@ class DetectorService {
     AssetBundle? bundle,
     DetectionInterpreter? interpreter,
     bool? isMobileOverride,
+    String modelAssetPath = 'model/detector.onnx',
   })  : _bundle = bundle ?? rootBundle,
         _providedInterpreter = interpreter,
         _interpreter = interpreter,
-        _isMobileOverride = isMobileOverride;
+        _isMobileOverride = isMobileOverride,
+        _modelAssetPath = modelAssetPath;
 
   final AssetBundle _bundle;
   final DetectionInterpreter? _providedInterpreter;
@@ -37,6 +42,7 @@ class DetectorService {
   bool _isInitialized = false;
   bool _useMockDetections = false;
   final bool? _isMobileOverride;
+  final String _modelAssetPath;
 
   bool get _isMobilePlatform {
     if (_isMobileOverride != null) {
@@ -76,8 +82,25 @@ class DetectorService {
 
     if (_isMobilePlatform) {
       try {
-        final interpreter =
-            await TfliteDetectionInterpreter.fromAsset('model/detector.tflite');
+        final DetectionInterpreter interpreter;
+        if (_modelAssetPath.endsWith('.onnx')) {
+          interpreter =
+              await OnnxDetectionInterpreter.fromAsset(_modelAssetPath);
+        } else if (_modelAssetPath.endsWith('.tflite')) {
+          final tfliteInterpreter =
+              await createTfliteInterpreter(_modelAssetPath);
+          if (tfliteInterpreter == null) {
+            throw FlutterError(
+              'TFLite interpreter is not available on this platform.',
+            );
+          }
+          interpreter = tfliteInterpreter;
+        } else {
+          throw FlutterError(
+            'Unsupported model format: $_modelAssetPath. '
+            'Expected .onnx or .tflite.',
+          );
+        }
         _interpreter = interpreter;
         _useMockDetections = false;
       } catch (error) {
@@ -254,7 +277,16 @@ class DetectorService {
       for (final buffer in outputBuffers) buffer.index: buffer.data,
     };
 
-    interpreter.run(input, outputs);
+    await interpreter.runAsync(input, outputs);
+
+    // Sync buffers with the outputs map. This is required for async backends
+    // (e.g. ONNX) that return new data objects rather than mutating the
+    // pre-allocated buffers in-place.
+    for (final buffer in outputBuffers) {
+      if (outputs.containsKey(buffer.index)) {
+        buffer.data = outputs[buffer.index]!;
+      }
+    }
 
     return _parseDetections(outputBuffers);
   }

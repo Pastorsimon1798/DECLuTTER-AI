@@ -15,7 +15,10 @@ class OutputTensorBuffer {
   final TensorType type;
 
   /// Nested list structure passed to `Interpreter.run` for this tensor.
-  final Object data;
+  ///
+  /// This is mutable so async backends (e.g. ONNX) can replace the buffer
+  /// with a new data object after inference.
+  Object data;
 
   static Object _createStorage(TensorType type, List<int> shape) {
     if (shape.isEmpty) {
