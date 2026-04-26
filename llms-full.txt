@@ -1,0 +1,130 @@
+# DECLuTTER AI — Full LLM Context
+# https://github.com/Pastorsimon1798/DECLuTTER-AI
+
+## Detailed Project Information
+
+### Mission
+DECLuTTER AI exists because adults with ADHD often feel paralyzed by clutter. Generic organization apps identify objects but don't help users *decide what to do with them*. We convert a messy photo into simple, time-boxed actions with neurodivergent-friendly design.
+
+### Core Principles
+1. **Decision over detection**: Finding items is useless without clear next actions
+2. **Shame-free language**: No "mess," "junk," "lazy," or "failed" — ever
+3. **Energy-aware**: Users choose 2-min, 5-min, 10-min, or listing sprint modes
+4. **Privacy by design**: On-device analysis is the default; cloud requires explicit per-group opt-in
+5. **Undo everything**: Every decision can be reversed without judgment
+
+### Technical Stack Details
+
+#### Mobile App (Flutter)
+- **Language**: Dart 3.5+
+- **State Management**: ChangeNotifier / ListenableBuilder (migrating to Riverpod)
+- **Navigation**: MaterialPageRoute (migrating to GoRouter)
+- **Local Storage**: SharedPreferences (timer persistence); SQLite planned for session history
+- **ML Runtime**: ONNX Runtime (primary), TensorFlow Lite (fallback)
+- **Camera**: camera plugin with permission_handler
+- **Image Processing**: image package for tensor preprocessing
+- **Sharing**: share_plus for CSV export
+
+#### Backend (FastAPI)
+- **Language**: Python 3.12+
+- **Framework**: FastAPI with Pydantic v2
+- **Database**: SQLite (MVP); PostgreSQL + SQLAlchemy 2 + Alembic planned
+- **AI Provider**: OpenAI Responses API adapter (backend-only; Flutter never calls AI directly)
+- **Image Storage**: Google Cloud Storage / S3-compatible (planned)
+- **Marketplace**: eBay Sell APIs (OAuth, encrypted tokens)
+- **Agent Protocols**: MCP (Model Context Protocol) + A2A (Agent-to-Agent) endpoints
+- **Security**: Firebase Auth + App Check, rate limiting, request size limits, structured logging with correlation IDs
+
+### Feature Modules
+
+#### Capture
+- Camera preview with focus guidance
+- Photo review with retake option
+- EXIF stripping for privacy
+- Persistent storage of captures
+
+#### Detection
+- On-device object detection using quantized models
+- Automatic fallback to mock detections when no model present
+- Debug overlay with bounding boxes, labels, and confidence scores
+- Support for EfficientDet-Lite0 and MobileNet SSD v2
+
+#### Grouping
+- Items grouped by category (electronics, books, clothing, furniture, etc.)
+- Duplicate detection by class + visual similarity
+- Group thumbnails and count display
+
+#### Decision (Decide)
+- DecisionCard widget per group
+- Five actions: Keep, Donate, Trash, Relocate, Maybe
+- Undo stack per group
+- Optional note field per decision
+- Haptic feedback and semantic labels
+- Progress indicator: "X/Y groups decided"
+
+#### Valuation
+- Category-based lookup tables (electronics, books, clothing, furniture)
+- Condition multipliers (new, good, fair, poor)
+- Offline fallback when backend unavailable
+- Display: low-mid-high range with confidence
+
+#### Session / Timer
+- 10-minute focus sprint timer
+- ADHD-friendly quick-start guidance
+- Completion celebration and summary
+- Session reset for new sprints
+
+#### Summary & Export
+- Post-sprint stats (decision counts, total resale value)
+- Per-group decision review
+- CSV export with proper escaping
+- Share sheet integration (mobile) and blob download (web)
+
+#### Backend Endpoints
+- `POST /valuation` — simple item valuation
+- `POST /valuation/estimate` — comp-based valuation
+- `POST /analysis/intake` — image analysis with signed uploads
+- `GET /public/listings/{slug}` — shareable public listing pages
+- `GET /openapi.json` — OpenAPI spec for agent integration
+- `GET /.well-known/agent-card.json` — agent protocol discovery
+
+### Security Features
+- Rate limiting (60 req/min global, 10 req/min intake)
+- Request size cap (10MB)
+- Correlation ID propagation for tracing
+- XSS escaping in all HTML outputs
+- CSV injection prevention (formula prefixing)
+- Path traversal protection in file storage
+- Prompt injection validation for storage keys
+- Basic/Bearer auth on protected routes
+- CORS configuration (no wildcards)
+
+### Testing
+- **Flutter**: widget tests for capture, timer, decision card, summary screens
+- **Backend**: pytest with 95 tests covering API, security, and edge cases
+- **CI**: GitHub Actions for flutter analyze, flutter test, and pytest
+
+### Development Roadmap
+1. ✅ Photo capture + on-device detection
+2. ✅ Item grouping + decision cards
+3. ✅ Valuation + session summary
+4. ✅ Security hardening + test coverage
+5. 🔄 SQLite persistence for session history
+6. 🔄 Riverpod state management migration
+7. 🔄 eBay marketplace integration
+8. 🔄 AI-powered item analysis (backend)
+9. 🔄 Listing draft generation
+10. 🔄 Public listing pages + agent endpoints
+
+### Related Projects
+- [tflite_flutter](https://github.com/am15h/tflite_flutter) — TensorFlow Lite plugin for Flutter
+- [onnxruntime](https://pub.dev/packages/onnxruntime) — ONNX Runtime for Flutter
+- [FastAPI](https://fastapi.tiangolo.com/) — modern Python web framework
+
+### Citation
+If you use or reference DECLuTTER AI in research or publications:
+```
+Gonzalez de Cruz, S. (2026). DECLuTTER AI: An ADHD-friendly decluttering
+assistant with on-device object detection. GitHub repository.
+https://github.com/Pastorsimon1798/DECLuTTER-AI
+```

@@ -1,123 +1,175 @@
-# DECLuTTER AI
+# DECLuTTER AI 🧠✨
 
-This repository now includes the first Flutter scaffolding for the ADHD-friendly decluttering assistant described in the MVP docs, plus an initial FastAPI backend scaffold aligned to the 2026 launch plan.
-The current build lets you capture a clutter "zone" photo, preview it, and jump straight into the 10-minute sprint timer with ADHD-friendly guardrails.
+> *The ADHD-friendly decluttering assistant. Snap a photo, see your items grouped, and decide keep / donate / trash / relocate / maybe in a 10-minute sprint.*
 
-## Structure
+[![App CI](https://github.com/Pastorsimon1798/DECLuTTER-AI/actions/workflows/flutter-test.yml/badge.svg)](https://github.com/Pastorsimon1798/DECLuTTER-AI/actions)
+[![Server CI](https://github.com/Pastorsimon1798/DECLuTTER-AI/actions/workflows/server-test.yml/badge.svg)](https://github.com/Pastorsimon1798/DECLuTTER-AI/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Flutter Version](https://img.shields.io/badge/Flutter-3.19+-blue.svg)](https://flutter.dev)
+[![Python Version](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://python.org)
 
-- `DECLUTTER_AI_2026_LAUNCH_PLAN_WITH_PORTER_VALUE_CHAIN.md` — 2026 launch source of truth and implementation direction.
-- `ADHD_Vision_Organizer_MVP_Docs_v0.1.md` — product brief, user stories, and acceptance criteria.
-- `app/` — Flutter application source code for the MVP prototype.
-  - `lib/src/features/capture/` — camera permissions + capture screen.
-  - `lib/src/features/detect/` — detector service, debug overlays, and domain models.
-  - `lib/src/features/session/` — timer flow and decision prep UI.
-- `server/` — FastAPI backend scaffold for valuation/listing/agent flows.
-  - `app/main.py` — API entrypoint and route registration.
-  - `app/api/routes/` — launch modules (`analysis`, `valuation`, `listing_drafts`, `marketplace_ebay`, `public_listings`, `mcp`, `a2a`, `user_data`).
-  - `tests/` — starter API tests.
+---
 
-## Getting Started
+## 🎯 Why DECLuTTER AI?
 
-Because the container image does not ship with Flutter, install Flutter 3.19+ locally, then run:
+Adults with ADHD often feel **paralyzed by clutter**. Generic apps identify objects but don't help you *decide what to do with them*.
+
+**DECLuTTER AI** converts a messy photo into simple, time-boxed actions with neurodivergent-friendly design:
+- Large buttons, minimal text, visible progress
+- Undo everything — no judgment
+- Haptic feedback on every decision
+- "Not today" escape route on every screen
+- Shame-free language (never "mess," "junk," or "lazy")
+
+---
+
+## ✨ Features
+
+| Feature | Description |
+|---|---|
+| 📸 **One-Tap Capture** | Take a photo of any cluttered zone — desk, closet, dresser, shelf |
+| 🏷️ **Smart Grouping** | On-device AI groups items by category: cables, books, clothing, electronics |
+| ⏱️ **10-Min Sprint Timer** | ADHD-friendly focus sessions with celebratory completion |
+| 💰 **Resale Valuation** | See "Money on the Table" estimates for sellable items |
+| 📝 **One-Tap Decisions** | Keep · Donate · Trash · Relocate · Maybe — with undo and notes |
+| 📊 **CSV Export** | Track your declutter progress over time |
+| 🔒 **Privacy-First** | All analysis happens on-device by default |
+| 🌐 **Shareable Listings** | Generate public listing pages for resale items |
+
+---
+
+## 🖼️ Screenshots
+
+> *Demo GIF and screenshots coming soon — follow [Discussions](https://github.com/Pastorsimon1798/DECLuTTER-AI/discussions) for updates!*
+
+---
+
+## 🚀 Quick Start
+
+### Flutter App
 
 ```bash
-cd app
+# 1. Install Flutter 3.19+ from https://docs.flutter.dev/get-started/install
+
+# 2. Clone and setup
+git clone https://github.com/Pastorsimon1798/DECLuTTER-AI.git
+cd DECLuTTER-AI/app
 flutter pub get
-```
 
-This pulls down the `camera`, `permission_handler`, `image`, and `tflite_flutter` packages needed for the capture + detection debug experience.
-
-## Setting Up the TFLite Model
-
-The app currently runs with **mock detections** for development purposes. To enable real on-device ML inference:
-
-1. **Add your TensorFlow Lite model:**
-   - Place `detector.tflite` at `app/assets/model/detector.tflite`
-   - Place `labels.txt` at `app/assets/model/labels.txt`
-   - See detailed requirements in `app/assets/model/README.md`
-
-2. **Or use the example labels:**
-   ```bash
-   cd app/assets/model
-   cp labels.txt.example labels.txt
-   # Then add your detector.tflite model
-   ```
-
-3. **Recommended starter models:**
-   - [EfficientDet-Lite0](https://tfhub.dev/tensorflow/efficientdet/lite0/detection/1)
-   - [MobileNet SSD v2](https://tfhub.dev/tensorflow/ssd_mobilenet_v2/2)
-
-The detector service automatically:
-- Resizes captured images to match your model's input tensor shape
-- Normalizes RGB values to `0.0–1.0` for float32 models
-- Keeps `0–255` values for int8/uint8 quantized models
-- Falls back to mock detections if model is unavailable
-
-**Without a model file:** The app loads `debug_sample_detections.json` so you can still develop and test the UI flow.
-
-Next, launch the app on a real device or simulator with camera support:
-
-```bash
+# 3. Run on device or simulator
 flutter run
 ```
 
-To execute the starter widget test:
+### Backend
 
 ```bash
-cd app
-flutter test
-```
-
-## Cash-to-Clear backend sync
-
-The sprint UI now stays local by default, but can sync detected groups, valuation ranges, listing drafts, decisions, and Money-on-the-Table totals to the backend session API when configured at run time:
-
-```bash
-cd app
-flutter run \
-  --dart-define=DECLUTTER_API_BASE_URL=https://your-backend.example \
-  --dart-define=DECLUTTER_ID_TOKEN=<firebase-id-token> \
-  --dart-define=DECLUTTER_APP_CHECK_TOKEN=<app-check-token>
-```
-
-If those values are omitted, the app keeps the existing local-only sprint flow. When configured, synced groups can also generate standalone listing page links for users who do not want to use marketplaces.
-
-## What works today
-
-- **Capture:** Request camera access, show a live preview, and snap one focused zone.
-- **Review:** Preview the saved image (mobile/desktop) or show a friendly fallback (web/tests) and offer a "Start 10-min timer" CTA.
-- **Detection debug:** After each capture the app runs the detector service. Until a real `.tflite` file is present it replays a realistic mock JSON so you can see bounding boxes, labels, and confidences drawn on top of the photo.
-- **Timer prep:** The sprint screen displays your captured zone, ADHD-friendly quick start guidance, and a focus timer that surfaces a celebratory checklist when it completes.
-- **Decision log:** Capture quick notes for each keep/donate/trash/relocate/maybe action so the post-sprint summary is already drafted.
-
-## Next build targets
-
-- Replace the mock detection flow with the real tensor preprocessing + interpreter call.
-- Add decision cards + four-box actions linked to the timer progress.
-- Persist session metadata locally so returning users can view their declutter history.
-
-## Backend (Scaffold)
-
-To run the backend scaffold locally:
-
-```bash
-cd server
+cd DECLuTTER-AI/server
 python -m venv .venv
 source .venv/bin/activate
-pip install -e .[dev]
+pip install -e ".[dev]"
 PYTHONPATH=app uvicorn app.main:app --reload
 ```
 
-Run backend tests:
+### Run Tests
 
 ```bash
-cd server
-source .venv/bin/activate
-pytest
+# Flutter
+cd app && flutter analyze && flutter test
+
+# Backend
+cd server && source .venv/bin/activate && pytest -x -q
 ```
 
-For same-day backend launch/deploy steps, see:
+---
 
-- `server/README.md` — backend environment profiles, Docker build, and smoke checks.
-- `server/deploy/hostinger-vps/` — Hostinger VPS Docker Compose + Caddy deploy bundle.
-- `docs/launch/SAME_DAY_LAUNCH_CHECKLIST.md` — private demo vs public production gate.
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────┐
+│         Flutter Mobile App (Dart)       │
+│  ┌─────────┐ ┌─────────┐ ┌──────────┐  │
+│  │ Capture │ │ Detect  │ │  Decide  │  │
+│  │  📸     │ │  🔍     │ │  ✅     │  │
+│  └────┬────┘ └────┬────┘ └────┬─────┘  │
+│       └───────────┴───────────┘         │
+│              ONNX Runtime               │
+│         (on-device, private)            │
+└─────────────────────────────────────────┘
+                    │
+        ┌───────────┴───────────┐
+        ▼                       ▼
+┌───────────────┐       ┌───────────────┐
+│  FastAPI      │       │  Local SQLite │
+│  Backend      │◄─────►│  (sessions)   │
+│  (Python)     │       │               │
+└───────────────┘       └───────────────┘
+```
+
+---
+
+## 🛡️ Security & Privacy
+
+- **On-device by default**: Object detection runs locally via ONNX Runtime — no photo leaves your device unless you explicitly opt in
+- **Encrypted tokens**: Marketplace API credentials stored encrypted on the backend
+- **EXIF stripping**: Location and metadata removed from uploaded images
+- **Audit logging**: Every action traced with correlation IDs
+- **Rate limiting**: 60 req/min global, 10 req/min for analysis endpoints
+- **Request size caps**: 10MB maximum to prevent abuse
+
+See [test_security.py](server/tests/test_security.py) for our security test coverage.
+
+---
+
+## 🧠 ADHD-First Design Principles
+
+Every screen follows these rules:
+
+1. **One primary action** — no decision paralysis
+2. **Visible progress** — always know how far you've come
+3. **Large touch targets** — minimum 48dp for all buttons
+4. **Undo everywhere** — mistakes are reversible
+5. **Energy modes** — "I have 2 minutes" / "I have 10 minutes" / "I can list today"
+6. **"I'm stuck" rescue** — algorithm suggests donate, recycle, or "not today" based on value and effort
+
+---
+
+## 🗺️ Roadmap
+
+- [x] Photo capture + on-device detection
+- [x] Item grouping + decision cards (Keep/Donate/Trash/Relocate/Maybe)
+- [x] Valuation + session summary
+- [x] Security hardening + test coverage
+- [ ] SQLite persistence for session history
+- [ ] Riverpod state management
+- [ ] AI-powered item analysis (backend vision model)
+- [ ] eBay marketplace integration
+- [ ] Listing draft generation
+- [ ] Public listing pages + buyer-agent endpoints (MCP/A2A)
+- [ ] iOS/Android app store release
+
+---
+
+## 🤝 Contributing
+
+We love contributors! Whether you're fixing a bug, adding a feature, improving docs, or sharing feedback — you're welcome here.
+
+- 📖 [Contributing Guide](CONTRIBUTING.md)
+- 🛡️ [Code of Conduct](CODE_OF_CONDUCT.md)
+- 🐛 [Report a Bug](https://github.com/Pastorsimon1798/DECLuTTER-AI/issues/new?template=bug_report.md)
+- 💡 [Request a Feature](https://github.com/Pastorsimon1798/DECLuTTER-AI/issues/new?template=feature_request.md)
+
+**Looking for your first contribution?** Check issues labeled [`good first issue`](https://github.com/Pastorsimon1798/DECLuTTER-AI/labels/good%20first%20issue).
+
+---
+
+## 📜 License
+
+[MIT](LICENSE) © Simon Gonzalez de Cruz
+
+---
+
+## 🙏 Acknowledgments
+
+Built with ❤️ for the ADHD and neurodivergent community. Special thanks to everyone who shares their declutter journey and helps us build something truly useful.
+
+> *"The goal isn't perfection — it's a little more space to breathe."*

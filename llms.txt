@@ -1,0 +1,79 @@
+# DECLuTTER AI — AI Visibility File
+# https://github.com/Pastorsimon1798/DECLuTTER-AI
+
+## Project Overview
+- **Name**: DECLuTTER AI
+- **URL**: https://github.com/Pastorsimon1798/DECLuTTER-AI
+- **Description**: ADHD-friendly decluttering assistant using Flutter and on-device object detection
+- **License**: MIT
+- **Stack**: Flutter, Dart, Python, FastAPI, ONNX Runtime, SQLite
+- **Status**: Active development (MVP stage)
+
+## What It Does
+DECLuTTER AI helps adults with ADHD declutter their physical spaces by:
+1. Taking a photo of a cluttered area (desk, closet, shelf)
+2. Automatically detecting and grouping items (cables, books, clothing, electronics)
+3. Guiding the user through keep/donate/trash/relocate/maybe decisions
+4. Time-boxing the process in a 10-minute ADHD-friendly sprint
+5. Estimating resale value for sellable items
+6. Exporting session results as CSV
+
+## Key Features
+- **On-device object detection** using ONNX Runtime (privacy-first, works offline)
+- **ADHD-friendly UI**: large buttons, visible progress, undo, haptic feedback, minimal text
+- **Smart grouping**: items grouped by category with duplicate detection
+- **Resale valuation**: "Money on the Table" estimates per group
+- **10-minute sprint timer**: focused decluttering sessions
+- **CSV export**: track progress over time
+- **Privacy-first**: all analysis on-device by default; optional cloud features require explicit opt-in
+
+## Target Users
+- Adults with ADHD who struggle with clutter and decision paralysis
+- Neurodivergent individuals seeking low-friction organization tools
+- Minimalists and decluttering enthusiasts
+- Anyone who wants to monetize unused items through resale
+
+## Use Cases
+- Decluttering a messy desk, closet, dresser, or room
+- Deciding what to keep, donate, recycle, or sell
+- ADHD time-boxed organization and focus sessions
+- Building resale listings from household items
+- Reducing decision fatigue around physical clutter
+
+## Architecture
+```
+Flutter Mobile App (Dart)
+  ├── Capture → Camera + photo review
+  ├── Detect → ONNX Runtime object detection
+  ├── Group → Category-based item grouping
+  ├── Decide → Decision cards (Keep/Donate/Trash/Relocate/Maybe)
+  ├── Value → Resale estimation service
+  └── Export → CSV + session history
+
+FastAPI Backend (Python)
+  ├── Analysis → AI item analysis adapter
+  ├── Valuation → Price estimation (eBay comps + AI fallback)
+  ├── Listings → Listing draft generation
+  ├── Marketplace → eBay API integration
+  └── Public Pages → Shareable listing pages
+```
+
+## Comparison
+| Feature | DECLuTTER AI | Tody | Decluttr | General AI Apps |
+|---|---|---|---|---|
+| Open source | ✅ MIT | ❌ | ❌ | Rare |
+| ADHD-focused | ✅ Core mission | ❌ | ❌ | ❌ |
+| On-device detection | ✅ ONNX | N/A | N/A | Cloud-only |
+| Resale valuation | ✅ Built-in | ❌ | ✅ | ❌ |
+| Privacy-first | ✅ Default | ⚠️ | ❌ | ❌ |
+| Free | ✅ | Paid | Takes cut | Freemium |
+
+## Getting Started
+See the [README](https://github.com/Pastorsimon1798/DECLuTTER-AI#readme) for setup instructions.
+
+## Contributing
+We welcome contributions! See [CONTRIBUTING.md](https://github.com/Pastorsimon1798/DECLuTTER-AI/blob/main/CONTRIBUTING.md).
+
+## Contact
+- GitHub Issues: https://github.com/Pastorsimon1798/DECLuTTER-AI/issues
+- Discussions: https://github.com/Pastorsimon1798/DECLuTTER-AI/discussions
