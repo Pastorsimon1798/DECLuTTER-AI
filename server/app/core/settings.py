@@ -99,6 +99,31 @@ class Settings:
     def _sqlite_session_store_configured() -> bool:
         return Settings._configured_path(os.getenv("DECLUTTER_SESSION_DB_PATH", ""))
 
+    _VISION_PROVIDERS = frozenset({
+        "anthropic",
+        "claude",
+        "cerebras",
+        "fireworks",
+        "fireworks-ai",
+        "fireworks_ai",
+        "groq",
+        "home",
+        "home_inference",
+        "home-inference",
+        "lmstudio",
+        "lm-studio",
+        "ollama-native",
+        "ollama_native",
+        "ollama-direct",
+        "ollama_direct",
+        "openai",
+        "openai_compatible",
+        "openai-compatible",
+        "together",
+        "togetherai",
+        "together-ai",
+    })
+
     @staticmethod
     def _home_inference_configured() -> bool:
         provider = (
@@ -106,16 +131,7 @@ class Settings:
             or os.getenv("DECLUTTER_MODEL_PROVIDER")
             or ""
         ).strip().lower()
-        if provider not in {
-            "home",
-            "home_inference",
-            "home-inference",
-            "lmstudio",
-            "lm-studio",
-            "openai",
-            "openai_compatible",
-            "openai-compatible",
-        }:
+        if provider not in Settings._VISION_PROVIDERS:
             return False
 
         base_url = (
@@ -123,13 +139,18 @@ class Settings:
             or os.getenv("OPENAI_BASE_URL")
             or os.getenv("LMSTUDIO_BASE_URL")
             or os.getenv("LM_STUDIO_BASE_URL")
+            or os.getenv("ANTHROPIC_BASE_URL")
+            or os.getenv("OLLAMA_BASE_URL")
             or ("http://127.0.0.1:1234/v1" if "lm" in provider else "")
+            or ("http://127.0.0.1:11434" if "ollama" in provider else "")
         )
         model = (
             os.getenv("DECLUTTER_INFERENCE_MODEL")
             or os.getenv("OPENAI_MODEL")
             or os.getenv("LMSTUDIO_MODEL")
             or os.getenv("LM_STUDIO_MODEL")
+            or os.getenv("ANTHROPIC_MODEL")
+            or os.getenv("OLLAMA_MODEL")
             or ""
         )
         return Settings._configured_env_value(base_url) and Settings._configured_env_value(

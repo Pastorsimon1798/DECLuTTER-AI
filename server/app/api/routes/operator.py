@@ -13,8 +13,7 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
 from schemas.session import SessionCreateRequest, SessionItemCreateRequest
 from services.analysis_adapter import (
-    MockStructuredAnalysisAdapter,
-    OpenAICompatibleAnalysisAdapter,
+    AnalysisAdapter,
     create_analysis_adapter_from_env,
 )
 from services.image_intake import ImageIntakeService
@@ -77,9 +76,7 @@ def get_operator_image_intake_service() -> ImageIntakeService:
 
 
 @lru_cache(maxsize=1)
-def get_operator_analysis_adapter() -> (
-    MockStructuredAnalysisAdapter | OpenAICompatibleAnalysisAdapter
-):
+def get_operator_analysis_adapter() -> AnalysisAdapter:
     return create_analysis_adapter_from_env()
 
 
@@ -176,7 +173,7 @@ async def _run_sprint(
     label_override: str,
     owner_uid: str,
     intake_service: ImageIntakeService,
-    analysis_adapter: MockStructuredAnalysisAdapter | OpenAICompatibleAnalysisAdapter,
+    analysis_adapter: AnalysisAdapter,
     store: CashToClearSessionStore,
 ) -> OperatorSprintResult:
     intake = await intake_service.intake(image)
