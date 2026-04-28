@@ -11,10 +11,10 @@ class FocusTimer extends StatefulWidget {
   final VoidCallback? onCompleted;
 
   @override
-  State<FocusTimer> createState() => _FocusTimerState();
+  State<FocusTimer> createState() => FocusTimerState();
 }
 
-class _FocusTimerState extends State<FocusTimer> with WidgetsBindingObserver {
+class FocusTimerState extends State<FocusTimer> with WidgetsBindingObserver {
   static const _initialDuration = Duration(minutes: 10);
   static const _prefsKeyPrefix = 'declutter_focus_timer';
   static const _prefsRemainingKey = '${_prefsKeyPrefix}_remaining_ms';
@@ -210,7 +210,7 @@ class _FocusTimerState extends State<FocusTimer> with WidgetsBindingObserver {
     });
   }
 
-  void _resetTimer() {
+  void reset() {
     _timer?.cancel();
     _timer = null;
     _backgroundedAt = null;
@@ -275,7 +275,7 @@ class _FocusTimerState extends State<FocusTimer> with WidgetsBindingObserver {
                       minHeight: 48,
                     ),
                     child: TextButton.icon(
-                      onPressed: _resetTimer,
+                      onPressed: reset,
                       icon: const Icon(Icons.refresh),
                       label: const Text('Reset'),
                       style: TextButton.styleFrom(

@@ -13,15 +13,10 @@ dependencies:
   camera: ^0.10.5+5
   permission_handler: ^11.1.0
   image: ^4.1.3
-  tflite_flutter: ^0.12.1
   shared_preferences: ^2.2.2
-  # Drift dependencies — uncomment when build_runner generates app_database.g.dart
-  # drift: ^2.30.0
-  # drift_flutter: ^0.3.0
-  # sqlite3_flutter_libs: ^0.6.0
-  # Migration path: ONNX Runtime is the default inference backend.
-  # TFLite is retained as a fallback during the transition period and may be
-  # removed in a future release once ONNX coverage is verified on all targets.
+  sqflite: ^2.3.2
+  path_provider: ^2.1.2
+  path: ^1.9.0
   onnxruntime: ^1.4.1
   share_plus: ^10.0.0
   http: ^1.2.0
@@ -30,6 +25,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
+  sqflite_common_ffi: ^2.4.0+3
   # build_runner: ^2.4.8
   # drift_dev: ^2.30.0
 

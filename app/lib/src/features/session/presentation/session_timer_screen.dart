@@ -37,6 +37,7 @@ class _SessionTimerScreenState extends State<SessionTimerScreen> {
   late final SessionController _controller;
   bool _ownsController = false;
   DateTime? _sessionStartTime;
+  final GlobalKey<FocusTimerState> _focusTimerKey = GlobalKey<FocusTimerState>();
 
   @override
   void initState() {
@@ -156,7 +157,10 @@ class _SessionTimerScreenState extends State<SessionTimerScreen> {
                     onCreateListingPage: _controller.createPublicListingPage,
                   ),
                 const SizedBox(height: 24),
-                FocusTimer(onCompleted: _handleTimerCompleted),
+                FocusTimer(
+                  key: _focusTimerKey,
+                  onCompleted: _handleTimerCompleted,
+                ),
                 const SizedBox(height: 24),
                 if (activeState != null &&
                     activeState.groupedResult.hasGroups) ...[

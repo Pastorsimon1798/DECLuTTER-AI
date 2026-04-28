@@ -9,10 +9,13 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../../detect/domain/detection.dart';
 import '../../detect/presentation/widgets/detection_debug_painter.dart';
+import '../../detect/services/backend_analysis_service.dart';
 import '../../detect/services/detector_service.dart';
 import '../../grouping/domain/grouped_detection_result.dart';
 import '../../grouping/services/detection_grouper.dart';
+import '../../history/presentation/history_screen.dart';
 import '../../session/presentation/session_timer_screen.dart';
+import '../../settings/presentation/settings_screen.dart';
 
 class CaptureScreen extends StatefulWidget {
   const CaptureScreen({super.key});
@@ -32,6 +35,7 @@ class _CaptureScreenState extends State<CaptureScreen>
   bool _cameraUnavailable = false;
   String? _errorMessage;
   final DetectorService _detectorService = DetectorService();
+  final BackendAnalysisService _backendAnalysis = BackendAnalysisService();
   DetectionResult? _detectionResult;
   GroupedDetectionResult _groupedResult = const GroupedDetectionResult.empty();
   bool _isAnalyzingCapture = false;
@@ -265,7 +269,23 @@ class _CaptureScreenState extends State<CaptureScreen>
     });
 
     try {
-      final result = await _detectorService.detectOnImage(capture.path);
+      DetectionResult result;
+
+      if (kIsWeb) {
+        // On web, try backend analysis first if a server is configured.
+        final backendResult = await _backendAnalysis.analyzeImage(
+          capture.path,
+          imageBytes: _lastCaptureBytes,
+        );
+        if (backendResult != null) {
+          result = backendResult;
+        } else {
+          result = await _detectorService.detectOnImage(capture.path);
+        }
+      } else {
+        result = await _detectorService.detectOnImage(capture.path);
+      }
+
       if (!mounted) return;
       setState(() {
         _detectionResult = result;
@@ -497,7 +517,7 @@ class _CaptureScreenState extends State<CaptureScreen>
     final detectionCount = result.detections.length;
     final groupCount = _groupedResult.groupCount;
     final statusText = result.isMocked
-        ? 'Showing sample detections (add assets/model/detector.tflite to use the real model).'
+        ? 'Showing sample detections (add assets/model/detector.onnx to use the real model).'
         : 'Detected $detectionCount items across $groupCount groups in your zone.';
     final inferenceText = result.inferenceTime != null
         ? 'Inference: ${result.inferenceTime!.inMilliseconds} ms'
@@ -554,6 +574,24 @@ class _CaptureScreenState extends State<CaptureScreen>
       appBar: AppBar(
         title: const Text('Capture clutter zone'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.history),
+            tooltip: 'Session history',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const HistoryScreen()),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: 'Settings',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SettingsScreen()),
+              );
+            },
+          ),
           Semantics(
             button: true,
             label: 'Capture tips',

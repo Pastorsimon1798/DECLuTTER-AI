@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../data/repositories/session_repository.dart';
 import '../../grouping/domain/detection_group.dart';
 import '../../grouping/domain/grouped_detection_result.dart';
 import '../../valuate/models/valuation.dart';
@@ -11,29 +12,38 @@ import 'session_state.dart';
 /// Business-logic controller for a declutter sprint session.
 ///
 /// Holds decision state, remote sync state, and drives the Cash-to-Clear
-/// backend integration. Notifies listeners on every meaningful state change.
+/// backend integration. Persists everything to local SQLite so sessions
+/// survive app restarts. Notifies listeners on every meaningful state change.
 class SessionController extends ChangeNotifier {
   SessionController({
     required GroupedDetectionResult groupedResult,
     CashToClearApiClient? cashToClearApi,
     ValuationService? valuationService,
+    SessionRepository? sessionRepository,
+    String? sessionId,
+    String? imagePath,
   })  : _groupedResult = groupedResult,
-        _cashToClearApi =
-            cashToClearApi ?? CashToClearApiClient.fromEnvironment(),
-        _valuationService =
-            valuationService ?? ValuationService.fromEnvironment() {
+        _cashToClearApi = cashToClearApi,
+        _valuationService = valuationService,
+        _sessionRepository = sessionRepository ?? SessionRepository(),
+        _sessionId = sessionId ?? 'local_${DateTime.now().millisecondsSinceEpoch}'
+  {
     _ownsCashToClearApi = cashToClearApi == null;
     _ownsValuationService = valuationService == null;
     if (_groupedResult.hasGroups) {
       _selectedGroupId = _groupedResult.primaryGroup?.id;
     }
-    _bootstrapCashToClearSession();
+    _imagePath = imagePath;
+    _bootstrapServices();
     _bootstrapValuations();
   }
 
   final GroupedDetectionResult _groupedResult;
-  final CashToClearApiClient _cashToClearApi;
-  final ValuationService _valuationService;
+  CashToClearApiClient? _cashToClearApi;
+  ValuationService? _valuationService;
+  final SessionRepository _sessionRepository;
+  final String _sessionId;
+  String? _imagePath;
   bool _ownsCashToClearApi = false;
   bool _ownsValuationService = false;
   bool _disposed = false;
@@ -53,6 +63,8 @@ class SessionController extends ChangeNotifier {
   bool _isSyncingCashToClear = false;
   String? _cashToClearSyncMessage;
   bool _isSprintCompleted = false;
+
+  String get sessionId => _sessionId;
 
   /// Current immutable snapshot of the session state.
   SessionState get state => SessionActive(
@@ -142,6 +154,7 @@ class SessionController extends ChangeNotifier {
     );
     _notify();
 
+    await _persistLocal();
     await _recordRemoteDecision(
       group: group,
       category: category,
@@ -151,7 +164,7 @@ class SessionController extends ChangeNotifier {
 
   /// Restores the previous decision for [groupId] from the undo stack.
   /// If the stack is empty, the current decision is simply removed.
-  void undoDecision(String groupId) {
+  Future<void> undoDecision(String groupId) async {
     final stack = _undoStack[groupId];
     if (stack != null && stack.isNotEmpty) {
       final previous = stack.removeLast();
@@ -161,15 +174,15 @@ class SessionController extends ChangeNotifier {
       _decisions.removeWhere((d) => d.groupId == groupId);
     }
     _notify();
+    await _persistLocal();
   }
 
   /// Creates a public listing page for the given group on the backend.
   Future<void> createPublicListingPage(String groupId) async {
     final sessionId = _remoteSessionId;
     final remoteItem = _remoteItemsByGroupId[groupId];
-    if (!_cashToClearApi.isConfigured ||
-        sessionId == null ||
-        remoteItem == null) {
+    final api = _cashToClearApi;
+    if (api == null || !api.isConfigured || sessionId == null || remoteItem == null) {
       _cashToClearSyncMessage =
           'Sync Cash-to-Clear values before creating a page.';
       _notify();
@@ -182,7 +195,7 @@ class SessionController extends ChangeNotifier {
     _notify();
 
     try {
-      final listing = await _cashToClearApi.createPublicListing(
+      final listing = await api.createPublicListing(
         sessionId: sessionId,
         itemId: remoteItem.itemId,
       );
@@ -202,9 +215,10 @@ class SessionController extends ChangeNotifier {
   }
 
   /// Marks the sprint as completed (e.g. when the timer runs out).
-  void completeSprint() {
+  Future<void> completeSprint() async {
     _isSprintCompleted = true;
     _notify();
+    await _sessionRepository.markCompleted(_sessionId);
   }
 
   /// Resets the sprint to its initial state.
@@ -229,6 +243,12 @@ class SessionController extends ChangeNotifier {
     await _fetchValuation(group);
   }
 
+  Future<void> _bootstrapServices() async {
+    _cashToClearApi ??= await CashToClearApiClient.fromSettings();
+    _valuationService ??= await ValuationService.fromSettings();
+    _bootstrapCashToClearSession();
+  }
+
   Future<void> _bootstrapValuations() async {
     if (!_groupedResult.hasGroups) return;
 
@@ -242,10 +262,14 @@ class SessionController extends ChangeNotifier {
     _notify();
 
     try {
-      final valuation = await _valuationService.estimateGroup(
-        group,
-        condition: 'unknown',
-      );
+      final service = _valuationService;
+      final valuation = service != null && service.isConfigured
+          ? await service.estimateGroup(group, condition: 'unknown')
+          : ValuationService.localFallback(
+              category: group.displayLabel,
+              condition: 'unknown',
+              count: group.count,
+            );
       _valuations[group.id] = valuation;
     } on Exception catch (e) {
       debugPrint('Valuation fetch failed for ${group.id}: $e');
@@ -254,13 +278,16 @@ class SessionController extends ChangeNotifier {
       _valuationLoadingGroupIds.remove(group.id);
       _notify();
     }
+
+    await _persistLocal();
   }
 
   Future<void> _bootstrapCashToClearSession() async {
-    if (!_cashToClearApi.isConfigured || !_groupedResult.hasGroups) {
-      _cashToClearSyncMessage = _cashToClearApi.isConfigured
+    final api = _cashToClearApi;
+    if (api == null || !api.isConfigured || !_groupedResult.hasGroups) {
+      _cashToClearSyncMessage = api != null && api.isConfigured
           ? 'Cash-to-Clear backend is ready. Capture detections to sync values.'
-          : 'Local mode: add DECLUTTER_API_BASE_URL, DECLUTTER_ID_TOKEN, and DECLUTTER_APP_CHECK_TOKEN to sync values.';
+          : 'Local mode: configure a server in Settings to sync values remotely.';
       _notify();
       return;
     }
@@ -270,12 +297,12 @@ class SessionController extends ChangeNotifier {
     _notify();
 
     try {
-      final session = await _cashToClearApi.createSession();
+      final session = await api.createSession();
       final remoteItems = <String, CashToClearItemDto>{};
       final groups = _groupedResult.groups;
       final syncedItems = await Future.wait(
         groups.map(
-          (group) => _cashToClearApi.addItem(
+          (group) => api.addItem(
             sessionId: session.sessionId,
             label: group.displayLabel,
             condition: 'unknown',
@@ -287,7 +314,7 @@ class SessionController extends ChangeNotifier {
         remoteItems[groups[index].id] = syncedItems[index];
       }
 
-      final refreshed = await _cashToClearApi.getSession(session.sessionId);
+      final refreshed = await api.getSession(session.sessionId);
       _remoteSessionId = refreshed.sessionId;
       _remoteItemsByGroupId
         ..clear()
@@ -312,7 +339,8 @@ class SessionController extends ChangeNotifier {
   }) async {
     final sessionId = _remoteSessionId;
     final remoteItem = _remoteItemsByGroupId[group.id];
-    if (!_cashToClearApi.isConfigured) {
+    final api = _cashToClearApi;
+    if (api == null || !api.isConfigured) {
       return;
     }
 
@@ -336,7 +364,7 @@ class SessionController extends ChangeNotifier {
 
     try {
       await _syncRemoteDecision(pending);
-      final refreshed = await _cashToClearApi.getSession(sessionId);
+      final refreshed = await api.getSession(sessionId);
       _moneyOnTableLowUsd = refreshed.moneyOnTableLowUsd;
       _moneyOnTableHighUsd = refreshed.moneyOnTableHighUsd;
       _isSyncingCashToClear = false;
@@ -351,7 +379,8 @@ class SessionController extends ChangeNotifier {
   }
 
   Future<void> _flushPendingRemoteDecisions() async {
-    if (!_cashToClearApi.isConfigured || _pendingRemoteDecisions.isEmpty) {
+    final api = _cashToClearApi;
+    if (api == null || !api.isConfigured || _pendingRemoteDecisions.isEmpty) {
       return;
     }
 
@@ -376,7 +405,7 @@ class SessionController extends ChangeNotifier {
       final sessionId = _remoteSessionId;
       final refreshed = sessionId == null
           ? null
-          : await _cashToClearApi.getSession(sessionId);
+          : await api.getSession(sessionId);
       if (refreshed != null) {
         _moneyOnTableLowUsd = refreshed.moneyOnTableLowUsd;
         _moneyOnTableHighUsd = refreshed.moneyOnTableHighUsd;
@@ -404,16 +433,33 @@ class SessionController extends ChangeNotifier {
   Future<void> _syncRemoteDecision(_PendingRemoteDecision decision) async {
     final sessionId = _remoteSessionId;
     final remoteItem = _remoteItemsByGroupId[decision.groupId];
-    if (sessionId == null || remoteItem == null) {
+    final api = _cashToClearApi;
+    if (api == null || sessionId == null || remoteItem == null) {
       throw const CashToClearApiException('Remote session is not ready.');
     }
 
-    await _cashToClearApi.recordDecision(
+    await api.recordDecision(
       sessionId: sessionId,
       itemId: remoteItem.itemId,
       category: decision.category,
       note: decision.note,
     );
+  }
+
+  Future<void> _persistLocal() async {
+    try {
+      await _sessionRepository.saveSession(
+        id: _sessionId,
+        imagePath: _imagePath,
+        groupedResult: _groupedResult,
+        decisions: _decisions,
+        valuations: _valuations,
+        moneyOnTableLowUsd: _moneyOnTableLowUsd,
+        moneyOnTableHighUsd: _moneyOnTableHighUsd,
+      );
+    } catch (e) {
+      debugPrint('Local persistence failed: $e');
+    }
   }
 
   void _notify() {
@@ -425,11 +471,13 @@ class SessionController extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
-    if (_ownsCashToClearApi) {
-      _cashToClearApi.dispose();
+    final api = _cashToClearApi;
+    if (_ownsCashToClearApi && api != null) {
+      api.dispose();
     }
-    if (_ownsValuationService) {
-      _valuationService.dispose();
+    final vs = _valuationService;
+    if (_ownsValuationService && vs != null) {
+      vs.dispose();
     }
     super.dispose();
   }

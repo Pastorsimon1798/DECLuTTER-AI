@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import '../../grouping/domain/detection_group.dart';
 import '../../session/services/_http_client.dart'
     if (dart.library.html) '../../session/services/_http_client_web.dart';
+import '../../settings/services/settings_service.dart';
 import '../models/valuation.dart';
 
 /// Lightweight service that estimates resale value for a [DetectionGroup].
@@ -32,6 +33,18 @@ class ValuationService {
       baseUrl: const String.fromEnvironment('DECLUTTER_API_BASE_URL'),
       idToken: const String.fromEnvironment('DECLUTTER_ID_TOKEN'),
       appCheckToken: const String.fromEnvironment('DECLUTTER_APP_CHECK_TOKEN'),
+    );
+  }
+
+  /// Creates a service from runtime [SettingsService] if the user has
+  /// configured and enabled a backend server.
+  static Future<ValuationService?> fromSettings() async {
+    final settings = SettingsService();
+    if (!await settings.isConfigured) return null;
+    return ValuationService(
+      baseUrl: await settings.baseUrl ?? '',
+      idToken: await settings.idToken ?? '',
+      appCheckToken: await settings.appCheckToken ?? '',
     );
   }
 
@@ -72,7 +85,11 @@ class ValuationService {
       }
     }
 
-    return _localFallback(request);
+    return localFallback(
+      category: request.category,
+      condition: request.condition,
+      count: request.count,
+    );
   }
 
   Future<Valuation> _postValuation(_ValuationRequest request) async {
@@ -107,7 +124,11 @@ class ValuationService {
     return Valuation.fromJson(json);
   }
 
-  static Valuation _localFallback(_ValuationRequest request) {
+  static Valuation localFallback({
+    required String category,
+    required String condition,
+    required int count,
+  }) {
     final ranges = <String, (double, double)>{
       'electronics': (10.0, 500.0),
       'books': (1.0, 15.0),
@@ -121,11 +142,11 @@ class ValuationService {
       'poor': 0.15,
     };
 
-    final key = request.category.toLowerCase();
+    final key = category.toLowerCase();
     final (lowBase, highBase) = ranges[key] ?? (1.0, 20.0);
-    final multiplier = multipliers[request.condition.toLowerCase()] ?? 0.5;
-    final low = lowBase * multiplier * request.count;
-    final high = highBase * multiplier * request.count;
+    final multiplier = multipliers[condition.toLowerCase()] ?? 0.5;
+    final low = lowBase * multiplier * count;
+    final high = highBase * multiplier * count;
     final mid = (low + high) / 2;
 
     return Valuation(

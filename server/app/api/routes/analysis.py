@@ -9,8 +9,7 @@ from schemas.analysis import (
     IntakeSessionResponse,
 )
 from services.analysis_adapter import (
-    MockStructuredAnalysisAdapter,
-    OpenAICompatibleAnalysisAdapter,
+    AnalysisAdapter,
     create_analysis_adapter_from_env,
 )
 from services.image_intake import ImageIntakeService
@@ -32,9 +31,7 @@ def get_image_intake_service() -> ImageIntakeService:
 
 
 @lru_cache(maxsize=1)
-def get_analysis_adapter() -> (
-    MockStructuredAnalysisAdapter | OpenAICompatibleAnalysisAdapter
-):
+def get_analysis_adapter() -> AnalysisAdapter:
     return create_analysis_adapter_from_env()
 
 

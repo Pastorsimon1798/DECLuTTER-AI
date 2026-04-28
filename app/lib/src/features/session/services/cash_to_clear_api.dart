@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import '_http_client.dart' if (dart.library.html) '_http_client_web.dart';
 
+import '../../settings/services/settings_service.dart';
 import '../domain/session_decision.dart';
 
 /// Minimal stdlib-backed API client for the backend Cash-to-Clear session loop.
@@ -36,6 +37,18 @@ class CashToClearApiClient {
       baseUrl: const String.fromEnvironment('DECLUTTER_API_BASE_URL'),
       idToken: const String.fromEnvironment('DECLUTTER_ID_TOKEN'),
       appCheckToken: const String.fromEnvironment('DECLUTTER_APP_CHECK_TOKEN'),
+    );
+  }
+
+  /// Creates a client from runtime [SettingsService] if the user has
+  /// configured and enabled a backend server.
+  static Future<CashToClearApiClient?> fromSettings() async {
+    final settings = SettingsService();
+    if (!await settings.isConfigured) return null;
+    return CashToClearApiClient(
+      baseUrl: await settings.baseUrl ?? '',
+      idToken: await settings.idToken ?? '',
+      appCheckToken: await settings.appCheckToken ?? '',
     );
   }
 

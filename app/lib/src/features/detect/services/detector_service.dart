@@ -12,15 +12,12 @@ import 'image_tensor_builder.dart';
 import '_onnx_initializer.dart'
     if (dart.library.html) '_onnx_initializer_web.dart';
 import 'output_tensor_buffer.dart';
-import '_tflite_initializer.dart'
-    if (dart.library.html) '_tflite_initializer_web.dart';
 
-/// Loads the object detection model and produces debug detections.
+/// Loads the object detection model and produces detections.
 ///
-/// The real TFLite inference is guarded behind platform checks so the
-/// development environment (which lacks the native runtime) still works by
-/// returning mock detections from a JSON asset. This keeps the UI plumbing and
-/// async flow realistic for the MVP.
+/// Uses ONNX Runtime as the default inference backend. Falls back to mock
+/// detections when no model file is present or the platform lacks native
+/// runtime support (e.g. web, desktop tests).
 class DetectorService {
   static const Duration _mockInferenceDuration = Duration(milliseconds: 120);
 
@@ -83,7 +80,6 @@ class DetectorService {
 
     if (_isMobilePlatform) {
       try {
-        final DetectionInterpreter interpreter;
         if (_modelAssetPath.endsWith('.onnx')) {
           final onnxInterpreter =
               await createOnnxInterpreter(_modelAssetPath);
@@ -92,27 +88,16 @@ class DetectorService {
               'ONNX interpreter is not available on this platform.',
             );
           }
-          interpreter = onnxInterpreter;
-        } else if (_modelAssetPath.endsWith('.tflite')) {
-          final tfliteInterpreter =
-              await createTfliteInterpreter(_modelAssetPath);
-          if (tfliteInterpreter == null) {
-            throw FlutterError(
-              'TFLite interpreter is not available on this platform.',
-            );
-          }
-          interpreter = tfliteInterpreter;
+          _interpreter = onnxInterpreter;
+          _useMockDetections = false;
         } else {
           throw FlutterError(
-            'Unsupported model format: $_modelAssetPath. '
-            'Expected .onnx or .tflite.',
+            'Unsupported model format: $_modelAssetPath. Expected .onnx.',
           );
         }
-        _interpreter = interpreter;
-        _useMockDetections = false;
       } catch (error) {
         debugPrint(
-            'DetectorService: failed to load model, falling back to mock data: $error');
+            'DetectorService: failed to load ONNX model, falling back to mock data: $error');
         _useMockDetections = true;
       }
     } else {
