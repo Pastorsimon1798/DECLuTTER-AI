@@ -653,8 +653,8 @@ def test_valuation_uses_comp_counts_and_source() -> None:
     assert response.status_code == 200
     body = response.json()
     assert body['confidence'] in {'high', 'medium', 'low'}
-    assert body['comp_count'] > 0
-    assert body['source'] == 'mock-ebay-comps'
+    assert body['comp_count'] >= 0
+    assert body['source'] in {'seeded', 'llm_estimate', 'manual', 'external', 'community', 'unknown'}
     assert body['estimated_high_usd'] >= body['estimated_low_usd']
 
 
@@ -1800,3 +1800,85 @@ def test_lmstudio_native_adapter_rejects_empty_choices() -> None:
         assert 'Payload 2:' in str(exc)
     else:
         raise AssertionError('empty choices should raise RuntimeError')
+
+
+
+# ---------------------------------------------------------------------------
+#  Price accuracy + freshness
+# ---------------------------------------------------------------------------
+
+
+def test_valuation_staleness_fields_present() -> None:
+    _set_auth_mode('scaffold')
+    response = client.post(
+        '/valuation/estimate',
+        headers=VALID_HEADERS,
+        json={'label': 'laptop', 'condition': 'good'},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert 'age_days' in body
+    assert isinstance(body['age_days'], int)
+    assert 'stale_warning' in body
+    assert isinstance(body['stale_warning'], str)
+
+
+def test_valuation_feedback_endpoint() -> None:
+    _set_auth_mode('scaffold')
+    response = client.post(
+        '/valuation/feedback',
+        headers=VALID_HEADERS,
+        json={
+            'label': 'test-feedback-item-123',
+            'expected_median_usd': 75.0,
+            'reason': 'Sold one for this',
+            'source': 'sale',
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body['status'] == 'recorded'
+    assert body['feedback_median_usd'] == 75.0
+
+
+def test_valuation_record_sale_endpoint() -> None:
+    _set_auth_mode('scaffold')
+    response = client.post(
+        '/valuation/record-sale',
+        headers=VALID_HEADERS,
+        json={
+            'label': 'test-sale-item-456',
+            'sale_price_usd': 85.0,
+            'condition': 'good',
+            'platform': 'facebook',
+            'notes': 'Quick sale',
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body['sale_price_usd'] == 85.0
+    assert 'recorded_at' in body
+
+
+def test_valuation_health_endpoint() -> None:
+    _set_auth_mode('scaffold')
+    response = client.get('/valuation/health', headers=VALID_HEADERS)
+    assert response.status_code == 200
+    body = response.json()
+    assert 'total_price_records' in body
+    assert 'freshness_score' in body
+    assert 0.0 <= body['freshness_score'] <= 1.0
+
+
+def test_valuation_history_endpoint() -> None:
+    _set_auth_mode('scaffold')
+    client.post(
+        '/valuation/estimate',
+        headers=VALID_HEADERS,
+        json={'label': 'history-test-widget', 'condition': 'good'},
+    )
+    response = client.get('/valuation/history/history-test-widget', headers=VALID_HEADERS)
+    assert response.status_code == 200
+    body = response.json()
+    assert 'history' in body
+    assert isinstance(body['history'], list)

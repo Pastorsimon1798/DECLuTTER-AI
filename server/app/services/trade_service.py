@@ -209,6 +209,140 @@ class TradeService:
 
         return self._match_to_dict(match_id)
 
+    def rate_user(
+        self,
+        trade_match_id: str,
+        rated_user_id: str,
+        rater_user_id: str,
+        rating: int,
+        tags: list[str] | None = None,
+        comment: str = "",
+    ) -> dict[str, Any]:
+        if not (1 <= rating <= 5):
+            raise ValueError("Rating must be between 1 and 5")
+
+        # Prevent self-rating
+        if rated_user_id == rater_user_id:
+            raise ValueError("Cannot rate yourself")
+
+        # Verify the match exists and is completed
+        match = self._get_match(trade_match_id)
+        if match is None:
+            raise ValueError(f"Trade match {trade_match_id} not found")
+        if match["status"] != "completed":
+            raise ValueError("Can only rate completed trades")
+
+        now = datetime.now(timezone.utc).isoformat()
+
+        with self._db() as conn:
+            conn.execute(
+                """
+                INSERT INTO trade_reviews (
+                    id, trade_match_id, rated_user_id, rater_user_id,
+                    rating, tags, comment, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    str(uuid.uuid4())[:8],
+                    trade_match_id,
+                    rated_user_id,
+                    rater_user_id,
+                    rating,
+                    json.dumps(tags or []),
+                    comment,
+                    now,
+                ),
+            )
+
+        return self._get_reputation(rated_user_id)
+
+    def get_reputation(self, user_id: str) -> dict[str, Any]:
+        return self._get_reputation(user_id)
+
+    def _get_reputation(self, user_id: str) -> dict[str, Any]:
+        with self._db() as conn:
+            row = conn.execute(
+                """
+                SELECT COUNT(*) as total, COALESCE(AVG(rating), 0) as avg_rating
+                FROM trade_reviews
+                WHERE rated_user_id = ?
+                """,
+                (user_id,),
+            ).fetchone()
+
+            tag_rows = conn.execute(
+                """
+                SELECT tags FROM trade_reviews
+                WHERE rated_user_id = ?
+                """,
+                (user_id,),
+            ).fetchall()
+
+        total = row["total"]
+        avg_rating = round(float(row["avg_rating"]), 2) if total > 0 else 0.0
+
+        tag_counts: dict[str, int] = {}
+        for r in tag_rows:
+            for tag in json.loads(r["tags"]):
+                tag_counts[tag] = tag_counts.get(tag, 0) + 1
+
+        top_tags = sorted(tag_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+
+        return {
+            "user_id": user_id,
+            "average_rating": avg_rating,
+            "total_trades": total,
+            "top_tags": [t[0] for t in top_tags],
+        }
+
+    def verify_user(
+        self,
+        user_id: str,
+        method: str,
+    ) -> dict[str, Any]:
+        if method not in ("email", "phone", "id"):
+            raise ValueError("Verification method must be email, phone, or id")
+
+        now = datetime.now(timezone.utc).isoformat()
+
+        with self._db() as conn:
+            conn.execute(
+                """
+                INSERT INTO user_verifications (
+                    user_id, verified, verified_at, verification_method
+                ) VALUES (?, ?, ?, ?)
+                ON CONFLICT(user_id) DO UPDATE SET
+                    verified = excluded.verified,
+                    verified_at = excluded.verified_at,
+                    verification_method = excluded.verification_method
+                """,
+                (user_id, 1, now, method),
+            )
+
+        return self.get_verification_status(user_id)
+
+    def get_verification_status(self, user_id: str) -> dict[str, Any]:
+        with self._db() as conn:
+            row = conn.execute(
+                "SELECT * FROM user_verifications WHERE user_id = ?",
+                (user_id,),
+            ).fetchone()
+
+        if row is None:
+            return {
+                "user_id": user_id,
+                "verified": False,
+                "verified_at": None,
+                "verification_method": None,
+            }
+
+        return {
+            "user_id": row["user_id"],
+            "verified": bool(row["verified"]),
+            "verified_at": row["verified_at"],
+            "verification_method": row["verification_method"],
+        }
+
     def _get_listing(self, listing_id: str) -> dict[str, Any] | None:
         with self._db() as conn:
             row = conn.execute(
@@ -328,6 +462,36 @@ class TradeService:
             )
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_matches_listing ON trade_matches(listing_id)"
+            )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS trade_reviews (
+                    id TEXT PRIMARY KEY,
+                    trade_match_id TEXT NOT NULL,
+                    rated_user_id TEXT NOT NULL,
+                    rater_user_id TEXT NOT NULL,
+                    rating INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5),
+                    tags TEXT,
+                    comment TEXT,
+                    created_at TEXT NOT NULL
+                )
+                """
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_reviews_rated ON trade_reviews(rated_user_id)"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_reviews_match ON trade_reviews(trade_match_id)"
+            )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS user_verifications (
+                    user_id TEXT PRIMARY KEY,
+                    verified INTEGER NOT NULL DEFAULT 0,
+                    verified_at TEXT,
+                    verification_method TEXT
+                )
+                """
             )
 
     @contextmanager

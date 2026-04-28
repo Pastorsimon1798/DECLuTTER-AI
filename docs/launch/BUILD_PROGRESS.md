@@ -34,6 +34,20 @@ This file tracks implementation progress against `DECLUTTER_AI_2026_LAUNCH_PLAN_
 - ✅ Self-hosted MVP readiness: shared-token auth, local uploads, and SQLite persistence can pass a separate `self_hosted_mvp_ready` gate without Firebase/S3/eBay.
 - ✅ Home inference hook: optional OpenAI-compatible/LM Studio endpoint support mirrors Achiote's env pattern for using the home inference server.
 
+## Completed — Phase 1: Barter/Trade Marketplace
+
+- ✅ Task 1: Trade Credit System — `TradeCreditStore` with SQLite ledger, earn/spend/balance/history.
+- ✅ Task 2: Trade Listing & Matching Service — create listing, nearby discovery (Haversine), propose/accept/decline, credit top-up.
+- ✅ Task 3: Trade API Routes — full CRUD endpoints wired into FastAPI with scaffold auth.
+- ✅ Task 4: ND-Specific UX — message templates, condition checklists, explicit trade rules.
+- ✅ Task 5: Reputation System — trade reviews, avg rating, trade count, top tags.
+- ✅ Task 6: Safety Checklists — 10 category-specific checklists.
+- ✅ Task 7: Verified Trader Badges — email/phone/id verification.
+- ✅ Task 8: Algorithmic Matching — multi-party trade loop detection (2–4 participants, DFS cycles).
+- ✅ Task 9: Price Seed Expansion — 4,018 → 6,072 items across 9 categories.
+- ✅ Task 10: Flutter Trade UI — browse, create listing, matches, wallet, hub screen, bottom-nav integration.
+- ✅ Backend tests: 170 passing (49 trade-specific), 0 failures.
+
 ## Next implementation steps
 
 1. Ops: deploy the self-hosted MVP container on the Hostinger VPS using `server/deploy/hostinger-vps/`.
@@ -41,5 +55,6 @@ This file tracks implementation progress against `DECLUTTER_AI_2026_LAUNCH_PLAN_
 3. WP5: point `DECLUTTER_ANALYSIS_PROVIDER=lmstudio` at the home inference server and build an eval set for item detection quality.
 4. WP6: improve valuation with local/manual comps workflow before requiring live marketplace APIs.
 5. WP8/WP9: keep public HTML listing pages and manual marketplace posting as the MVP path; add OAuth/eBay API later.
-6. Later production: provision Firebase Admin credentials + production token validation smoke tests only when real public user accounts are needed.
-7. Later production: replace local uploads with object storage only when VPS disk is no longer enough.
+6. Phase 2 trade: shipping integration, nonprofit partnerships, distributed moderation.
+7. Later production: provision Firebase Admin credentials + production token validation smoke tests only when real public user accounts are needed.
+8. Later production: replace local uploads with object storage only when VPS disk is no longer enough.

@@ -57,12 +57,15 @@ pytest
 
 ## Areas Where Help is Needed
 
-- 🎨 UI/UX improvements for ADHD accessibility
-- 🌍 Internationalization (i18n)
-- 📱 iOS-specific optimizations
-- 🧪 Test coverage for edge cases
-- 📖 Documentation and tutorials
-- 🌐 Landing page and marketing content
+- 🎨 **UI/UX improvements** for ADHD accessibility (especially trade flow ND-friction reduction)
+- 🌍 **Internationalization (i18n)** — Spanish, French, and other language support
+- 📱 **iOS-specific optimizations** and App Store prep
+- 🧪 **Flutter widget tests** for trade screens (`BrowseTradesScreen`, `TradeHubScreen`, etc.)
+- 🔄 **Phase 2 trade features** — shipping integration, nonprofit partnerships, distributed moderation
+- 🧠 **ONNX Runtime migration** — replace TFLite as default inference backend
+- 🗄️ **Drift/SQLite persistence** — session history and offline-first data
+- 📖 **Documentation and tutorials** — especially trade marketplace user guides
+- 🌐 **Landing page and marketing content** — update `docs/index.html` with new features
 
 ## Questions?
 

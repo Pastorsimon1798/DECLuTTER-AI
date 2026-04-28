@@ -17,6 +17,7 @@ from api.routes.operator import router as operator_router
 from api.routes.public_listings import router as public_listings_router
 from api.routes.seller import router as seller_router
 from api.routes.sessions import router as sessions_router
+from api.routes.trade import router as trade_router
 from api.routes.user_data import router as user_data_router
 from api.routes.valuation import router as valuation_router
 from core.settings import Settings
@@ -116,6 +117,7 @@ def create_app() -> FastAPI:
     api.include_router(ebay_router, dependencies=protected)
     api.include_router(mcp_router, dependencies=protected)
     api.include_router(a2a_router, dependencies=protected)
+    api.include_router(trade_router, dependencies=protected)
     api.include_router(user_data_router, dependencies=protected)
 
     return api

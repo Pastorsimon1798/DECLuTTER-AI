@@ -1,4 +1,5 @@
 import os
+import tempfile
 
 os.environ.setdefault("DECLUTTER_ENV", "test")
 
@@ -6,7 +7,7 @@ from services.trade_service import TradeService
 
 
 def test_propose_trade_with_exact_match():
-    svc = TradeService(db_path="/tmp/test_trade_service_1.sqlite3")
+    svc = TradeService(db_path=tempfile.mktemp(suffix=".sqlite3"))
 
     alice_listing = svc.create_listing(
         user_id="alice",
@@ -45,7 +46,7 @@ def test_propose_trade_with_exact_match():
 
 
 def test_propose_trade_with_credit_top_up():
-    svc = TradeService(db_path="/tmp/test_trade_service_2.sqlite3")
+    svc = TradeService(db_path=tempfile.mktemp(suffix=".sqlite3"))
 
     alice_listing = svc.create_listing(
         user_id="alice",
@@ -89,7 +90,7 @@ def test_propose_trade_with_credit_top_up():
 
 
 def test_cannot_trade_with_self():
-    svc = TradeService(db_path="/tmp/test_trade_service_3.sqlite3")
+    svc = TradeService(db_path=tempfile.mktemp(suffix=".sqlite3"))
 
     listing = svc.create_listing(
         user_id="alice",
@@ -114,7 +115,7 @@ def test_cannot_trade_with_self():
 
 
 def test_decline_trade_releases_listing():
-    svc = TradeService(db_path="/tmp/test_trade_service_4.sqlite3")
+    svc = TradeService(db_path=tempfile.mktemp(suffix=".sqlite3"))
 
     alice_listing = svc.create_listing(
         user_id="alice",

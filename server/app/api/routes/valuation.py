@@ -3,12 +3,17 @@ from functools import lru_cache
 from fastapi import APIRouter, Depends
 
 from schemas.valuation import (
+    PriceFeedbackRequest,
+    PriceFeedbackResponse,
+    RecordedSaleRequest,
+    RecordedSaleResponse,
     SimpleValuationRequest,
     SimpleValuationResponse,
+    ValuationOverrideRequest,
     ValuationRequest,
     ValuationResponse,
 )
-from services.valuation_service import MockCompsValuationService
+from services.valuation_service import ResearchBackedValuationService
 
 router = APIRouter(prefix="/valuation", tags=["valuation"])
 
@@ -29,16 +34,86 @@ _CONDITION_MULTIPLIERS: dict[str, float] = {
 
 
 @lru_cache(maxsize=1)
-def get_valuation_service() -> MockCompsValuationService:
-    return MockCompsValuationService()
+def get_valuation_service() -> ResearchBackedValuationService:
+    return ResearchBackedValuationService()
 
 
 @router.post("/estimate", response_model=ValuationResponse)
 def estimate_value(
     payload: ValuationRequest,
-    service: MockCompsValuationService = Depends(get_valuation_service),
+    service: ResearchBackedValuationService = Depends(get_valuation_service),
 ) -> ValuationResponse:
     return service.estimate(payload)
+
+
+@router.post("/override", response_model=ValuationResponse)
+def override_value(
+    payload: ValuationOverrideRequest,
+    service: ResearchBackedValuationService = Depends(get_valuation_service),
+) -> ValuationResponse:
+    return service.estimate(
+        ValuationRequest(label=payload.label, condition=payload.condition),
+        user_override_usd=payload.override_usd,
+    )
+
+
+@router.post("/feedback", response_model=PriceFeedbackResponse)
+def price_feedback(
+    payload: PriceFeedbackRequest,
+    service: ResearchBackedValuationService = Depends(get_valuation_service),
+) -> PriceFeedbackResponse:
+    result = service.record_feedback(
+        label=payload.label,
+        expected_median_usd=payload.expected_median_usd,
+        reason=payload.reason,
+        source=payload.source,
+    )
+    return PriceFeedbackResponse(
+        label=result["label"],
+        previous_median_usd=result["previous_median_usd"],
+        feedback_median_usd=result["feedback_median_usd"],
+        status=result["status"],
+        message="Feedback recorded. If enough users agree, the price will auto-adjust.",
+    )
+
+
+@router.post("/record-sale", response_model=RecordedSaleResponse)
+def record_sale(
+    payload: RecordedSaleRequest,
+    service: ResearchBackedValuationService = Depends(get_valuation_service),
+) -> RecordedSaleResponse:
+    result = service.record_sale(
+        label=payload.label,
+        sale_price_usd=payload.sale_price_usd,
+        condition=payload.condition,
+        platform=payload.platform,
+        notes=payload.notes,
+    )
+    return RecordedSaleResponse(
+        label=result["label"],
+        sale_price_usd=result["sale_price_usd"],
+        recorded_at=result["recorded_at"],
+        message="Sale recorded. If enough sales are reported, the price will auto-adjust.",
+    )
+
+
+@router.get("/health")
+def valuation_health(
+    service: ResearchBackedValuationService = Depends(get_valuation_service),
+) -> dict:
+    return service.get_health()
+
+
+@router.get("/history/{label}")
+def price_history(
+    label: str,
+    limit: int = 20,
+    service: ResearchBackedValuationService = Depends(get_valuation_service),
+) -> dict:
+    return {
+        "label": label,
+        "history": service.get_price_history(label, limit),
+    }
 
 
 @router.post("", response_model=SimpleValuationResponse)

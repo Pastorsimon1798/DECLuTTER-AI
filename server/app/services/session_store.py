@@ -26,7 +26,7 @@ from schemas.session import (
 )
 from schemas.valuation import ValuationRequest, ValuationResponse
 from services.listing_service import ListingDraftService
-from services.valuation_service import MockCompsValuationService
+from services.valuation_service import ResearchBackedValuationService
 
 _NON_SELL_DECISIONS = {'donate', 'trash', 'recycle', 'keep', 'relocate', 'maybe'}
 
@@ -35,7 +35,7 @@ class CashToClearSessionStore:
     def __init__(
         self,
         db_path: str | None = None,
-        valuation_service: MockCompsValuationService | None = None,
+        valuation_service: ResearchBackedValuationService | None = None,
         listing_service: ListingDraftService | None = None,
     ) -> None:
         raw_path = db_path or os.getenv('DECLUTTER_SESSION_DB_PATH', '/tmp/declutter_ai_sessions.sqlite3')
@@ -48,7 +48,7 @@ class CashToClearSessionStore:
                 RuntimeWarning,
                 stacklevel=2,
             )
-        self.valuation_service = valuation_service or MockCompsValuationService()
+        self.valuation_service = valuation_service or ResearchBackedValuationService()
         self.listing_service = listing_service or ListingDraftService()
         self._ensure_schema()
 

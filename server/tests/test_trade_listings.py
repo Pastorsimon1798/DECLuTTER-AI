@@ -1,4 +1,5 @@
 import os
+import tempfile
 
 os.environ.setdefault("DECLUTTER_ENV", "test")
 
@@ -6,7 +7,7 @@ from services.trade_service import TradeService
 
 
 def test_create_trade_listing():
-    svc = TradeService(db_path="/tmp/test_trade_listings_1.sqlite3")
+    svc = TradeService(db_path=tempfile.mktemp(suffix=".sqlite3"))
     listing = svc.create_listing(
         user_id="user-123",
         item_label="winsor newton oil paint set",
@@ -24,7 +25,7 @@ def test_create_trade_listing():
 
 
 def test_find_nearby_listings():
-    svc = TradeService(db_path="/tmp/test_trade_listings_2.sqlite3")
+    svc = TradeService(db_path=tempfile.mktemp(suffix=".sqlite3"))
     svc.create_listing(
         user_id="user-123",
         item_label="oil paint set",
@@ -46,7 +47,7 @@ def test_find_nearby_listings():
 
 
 def test_exclude_own_listings():
-    svc = TradeService(db_path="/tmp/test_trade_listings_3.sqlite3")
+    svc = TradeService(db_path=tempfile.mktemp(suffix=".sqlite3"))
     svc.create_listing(
         user_id="alice",
         item_label="paint set",

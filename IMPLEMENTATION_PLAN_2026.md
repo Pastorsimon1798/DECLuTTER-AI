@@ -1,8 +1,8 @@
 # DECLuTTER AI — 2026 Implementation Plan
 
 > **Audience:** AI coding agents (Claude Code, Codex, etc.) picking up work packages.
-> **Status:** Planning doc. Source of truth for scope, stack, and sequencing.
-> **Last updated:** 2026-04-24 after PR #33 (Tier 0/1/2 fixes + ONNX adapter starter).
+> **Status:** Active. Phase 1 (Barter/Trade Marketplace) is **COMPLETE**. See §10 for completed work.
+> **Last updated:** 2026-04-27 after Tasks 1–10 (Phase 1 completion).
 > **Supersedes (for stack choices):** `ADHD_Vision_Organizer_MVP_Docs_v0.1.md` §6, §7, §14.
 > **Does not supersede:** the UX spec, privacy stance, or ADHD-friendly principles in the MVP doc — those still hold.
 
@@ -12,12 +12,13 @@
 
 1. Bring the repo from a mocked MVP scaffold to a shippable on-device app.
 2. Add an **item valuation feature** ("how much money can I get for the stuff in the picture") as the primary motivator for decluttering.
-3. Use **only open-source tooling**. No provider-specific SDKs. No API keys shipped with the app. No AGPL on client-shipped code.
-4. Keep the existing Flutter app. Do not rewrite the frontend.
+3. Add a **barter/trade marketplace** so users can exchange decluttered items locally without cash.
+4. Use **only open-source tooling**. No provider-specific SDKs. No API keys shipped with the app. No AGPL on client-shipped code.
+5. Keep the existing Flutter app. Do not rewrite the frontend.
 
 ## 2. Non-Goals
 
-- Multi-photo sessions, multi-room mapping, cloud sync, accounts, habit systems.
+- Cloud sync, accounts, habit systems.
 - Live marketplace integrations that require vendor SDKs or shipped API keys.
 - Replacing Flutter. Replacing the capture/timer/decision-log code that already works.
 - Any provider-specific VLM (Claude, GPT-4o, Gemini, etc.).
@@ -26,17 +27,18 @@
 
 | Layer | Choice | License | Status |
 |---|---|---|---|
-| Frontend | Flutter (existing) | BSD-3 | ✅ Active. `camera`, `permission_handler`, `image` retained. |
+| Frontend | Flutter (existing) | BSD-3 | ✅ Active. `camera`, `permission_handler`, `image` retained. Trade UI complete under `lib/src/features/trade/`. |
 | On-device inference runtime | `onnxruntime` Flutter plugin | MIT | 🟡 Adapter (`OnnxDetectionInterpreter`) implemented but **not wired as default**. `tflite_flutter` still active. |
 | On-device VLM | **Moondream 2** (ONNX, int8) | Apache 2.0 | 📋 Planned. Blocked on WP1 completion. |
 | On-device detector fallback | **RT-DETR** or **YOLO-NAS** (ONNX) | Apache 2.0 | 📋 Planned. Do NOT use Ultralytics YOLOv8/v11 — AGPL. |
 | Local persistence | `shared_preferences` (timer state) + `drift` (full DB) | MIT | 🟡 `SharedPreferences` for `FocusTimer` state is live. **Drift deferred** — CI cannot run `build_runner`. Reintroduction requires committing generated `.g.dart` files. |
-| Optional server mode | FastAPI + Ollama + Qwen2.5-VL | MIT / Apache 2.0 | ✅ Backend scaffold exists and is deployed. |
-| Valuation source | VLM-generated price range (on-device or server) | — | 📋 Planned in WP5. |
+| Optional server mode | FastAPI + LM Studio / Ollama + Qwen | MIT / Apache 2.0 | ✅ Backend deployed on Hostinger VPS at `kyanitelabs.tech/declutter`. `DECLUTTER_ANALYSIS_PROVIDER=lmstudio` via Tailscale. |
+| Valuation source | Seeded price database (6,072 items) + LLM fallback | — | ✅ Complete. Expanded from 4,018 → 6,072 items across 9 categories. |
+| Trade backend | FastAPI + SQLite | — | ✅ Phase 1 complete. Credits, listings, matching, reputation, verification, safety, algorithmic loops. 170 tests. |
 
 ### Licensing rules for agents
 - **Anything bundled with the app must be MIT / Apache 2.0 / BSD / public domain.** No AGPL, no GPL, no "research-only" weights.
-- Moondream 2 and Qwen2.5-VL are both Apache 2.0 — safe.
+- Moondream 2 and Qwen are both Apache 2.0 — safe.
 - Do not add Ultralytics packages.
 
 ## 4. Work Packages
@@ -166,16 +168,18 @@ Each WP is independently mergeable. Order follows the dependency graph in §5.
 
 ### WP7 — Optional self-hosted server mode
 
-**Goal:** Let power users point the app at their own Ollama/vLLM instance for better valuations, without any default server.
+**Status:** ✅ Backend deployed and functional. Flutter settings UI not yet wired.
+
+**Goal:** Let power users point the app at their own LM Studio/Ollama/vLLM instance for better valuations, without any default server.
 
 **Changes:**
 - `app/lib/src/features/settings/` (new): simple screen with one text field (`Server URL`) and a toggle (`Use server for valuation`). Store in `SharedPreferences`.
 - `ServerValuationService` (created in WP5) consumes this setting.
 - Ship a reference server under `server/` at repo root:
   - `server/Dockerfile` — FastAPI app.
-  - `server/app/main.py` — `POST /value` endpoint that forwards to a local Ollama running Qwen2.5-VL, returns the same JSON schema as on-device.
-  - `server/docker-compose.yml` — FastAPI + Ollama together.
-  - `server/README.md` — how to run on a VPS, expected VRAM (~16GB for Qwen2.5-VL 7B), port config.
+  - `server/app/main.py` — `POST /value` endpoint that forwards to a local LM Studio running Qwen, returns the same JSON schema as on-device.
+  - `server/docker-compose.yml` — FastAPI + optional Ollama together.
+  - `server/README.md` — how to run on a VPS, expected VRAM (~8GB for Qwen 7B), port config.
 
 **Acceptance:**
 - With no server configured, app behaves exactly as WP5.
@@ -228,18 +232,19 @@ Parallelizable: WP1+WP3 can run concurrently. WP7 can start once WP5's interface
 - `app/lib/src/features/session/presentation/widgets/focus_timer.dart`.
 - `app/lib/src/features/session/presentation/widgets/quick_start_card.dart`.
 - `app/lib/main.dart`, `app/lib/src/app.dart` — touch only to register new routes.
+- `app/lib/src/features/trade/` — Phase 1 complete. Add to, but don't break existing screens.
 
 **To add:**
 - `app/lib/src/data/db/` (WP3)
 - `app/lib/src/features/decide/` (WP4)
 - `app/lib/src/features/valuation/` (WP5)
 - `app/lib/src/features/settings/` (WP7)
-- `server/` (WP7)
 
 ## 7. Branching
 
 - Each WP should land on its own branch off `main`, named `claude/wp{N}-{slug}`. Example: `claude/wp2-moondream`.
 - Do not combine WPs into a single branch unless they share files that would conflict (e.g., WP1 and WP2 can share a branch).
+- The Barter/Trade Marketplace Phase 1 used a dedicated plan file: `docs/plans/2026-04-28-barter-marketplace.md`. Future phases should use the same pattern.
 
 ## 8. Definition of Done (whole project)
 
@@ -252,7 +257,23 @@ Parallelizable: WP1+WP3 can run concurrently. WP7 can start once WP5's interface
 - [ ] Manual test script (MVP doc §13) passes.
 - [ ] `flutter test` green.
 
-## 9. Rules for Agents Picking This Up
+## 9. Definition of Done — Phase 1 (Barter/Trade) ✅
+
+- [x] Trade credit ledger (earn/spend/balance/history) with SQLite persistence.
+- [x] Trade listings with geolocation, condition, and valuation-backed credit pricing.
+- [x] Nearby discovery with Haversine distance filtering.
+- [x] Full trade lifecycle: propose → accept/decline → credit transfer → completion.
+- [x] ND-friendly UX: message templates, condition checklists, explicit trade rules.
+- [x] Reputation + review system (avg rating, trade count, tags).
+- [x] Safety checklists for 10 categories.
+- [x] Verified trader badges (email/phone/id).
+- [x] Algorithmic multi-party trade loop detection (DFS cycles, 2–4 participants).
+- [x] Expanded valuation engine: 6,072 seeded items across 9 categories.
+- [x] Flutter trade UI: browse, create listing, matches, wallet, hub screen.
+- [x] All trade endpoints tested: 49 trade-specific tests passing.
+- [x] Total backend test count: 170 passing, 0 failures.
+
+## 10. Rules for Agents Picking This Up
 
 1. **Read the WP in full before touching files.** Acceptance criteria are the contract.
 2. **Do not expand scope.** If you see adjacent code that looks wrong, note it and move on unless it blocks the WP.
@@ -261,7 +282,9 @@ Parallelizable: WP1+WP3 can run concurrently. WP7 can start once WP5's interface
 5. **Do not introduce mock-only code paths that aren't gated behind "model file missing."** The mock JSON fallback exists for one reason: developer ergonomics without weights on disk.
 6. **Write the minimum tests needed for the acceptance criteria.** No snapshot tests, no exhaustive fuzz suites.
 7. **Keep the ADHD-friendly UX principles:** large buttons, minimal text, one-glance reads, haptic feedback on decisions. Do not add settings pages for things that aren't in WP7.
+8. **Trade UI additions must not break existing declutter flow.** The app has two modes now; keep them independent.
 
 ---
 
 **WP1 is the blocker for everything else. Complete the ONNX wiring first.**
+**Phase 1 (Trade) is DONE. See [docs/plans/2026-04-28-barter-marketplace.md](docs/plans/2026-04-28-barter-marketplace.md) for Phase 2 plans.**

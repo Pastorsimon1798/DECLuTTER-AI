@@ -1,6 +1,6 @@
 # DECLuTTER AI 🧠✨
 
-> *The ADHD-friendly decluttering assistant. Snap a photo, see your items grouped, and decide keep / donate / trash / relocate / maybe in a 10-minute sprint.*
+> *The ADHD-friendly decluttering assistant. Snap a photo, see your items grouped, decide keep / donate / trash / relocate / maybe in a 10-minute sprint — then trade what you don't need with people nearby.*
 
 [![App CI](https://github.com/Pastorsimon1798/DECLuTTER-AI/actions/workflows/flutter-test.yml/badge.svg)](https://github.com/Pastorsimon1798/DECLuTTER-AI/actions)
 [![Server CI](https://github.com/Pastorsimon1798/DECLuTTER-AI/actions/workflows/server-test.yml/badge.svg)](https://github.com/Pastorsimon1798/DECLuTTER-AI/actions)
@@ -20,21 +20,34 @@ Adults with ADHD often feel **paralyzed by clutter**. Generic apps identify obje
 - Haptic feedback on every decision
 - "Not today" escape route on every screen
 - Shame-free language (never "mess," "junk," or "lazy")
+- **NEW:** Trade your decluttered items locally — no cash, no apps, no hassle
 
 ---
 
 ## ✨ Features
 
+### Core Declutter Flow
 | Feature | Description |
 |---|---|
 | 📸 **One-Tap Capture** | Take a photo of any cluttered zone — desk, closet, dresser, shelf |
 | 🏷️ **Smart Grouping** | On-device AI groups items by category: cables, books, clothing, electronics |
 | ⏱️ **10-Min Sprint Timer** | ADHD-friendly focus sessions with celebratory completion |
-| 💰 **Resale Valuation** | See "Money on the Table" estimates for sellable items |
+| 💰 **Resale Valuation** | See "Money on the Table" estimates for sellable items (6,072 seeded prices + LLM fallback) |
 | 📝 **One-Tap Decisions** | Keep · Donate · Trash · Relocate · Maybe — with undo and notes |
 | 📊 **CSV Export** | Track your declutter progress over time |
 | 🔒 **Privacy-First** | All analysis happens on-device by default |
-| 🌐 **Shareable Listings** | Generate public listing pages for resale items |
+
+### Barter/Trade Marketplace (NEW)
+| Feature | Description |
+|---|---|
+| 🔄 **Local Trade Listings** | List items you decluttered for trade using fair-market credit values |
+| 📍 **Nearby Discovery** | Find trade listings within a radius using Haversine distance filtering |
+| 💳 **Non-Monetary Credits** | 1 credit = $1 fair value. Earn by trading, spend on items you want. No cash needed |
+| 🧩 **Algorithmic Matching** | Multi-party trade loop detection (2–4 participants) finds circular trades where everyone wins |
+| ⭐ **Reputation System** | Rate traders after each exchange. View average rating, trade count, and trust tags |
+| 🛡️ **Safety Checklists** | Category-specific safety guides (electronics, baby, disability, plants, art, and more) |
+| ✅ **Verified Trader Badges** | Email, phone, and ID verification badges build community trust |
+| 💬 **ND-Friendly Messaging** | Built-in message templates, condition checklists, and explicit trade rules reduce social friction |
 
 ---
 
@@ -76,7 +89,7 @@ PYTHONPATH=app uvicorn app.main:app --reload
 # Flutter
 cd app && flutter analyze && flutter test
 
-# Backend
+# Backend (170 tests, all passing)
 cd server && source .venv/bin/activate && pytest -x -q
 ```
 
@@ -94,15 +107,27 @@ cd server && source .venv/bin/activate && pytest -x -q
 │       └───────────┴───────────┘         │
 │              ONNX Runtime               │
 │         (on-device, private)            │
+│                                         │
+│  ┌───────────────────────────────────┐  │
+│  │     🔄 Trade Marketplace UI       │  │
+│  │  Browse · List · Match · Wallet   │  │
+│  └───────────────────────────────────┘  │
 └─────────────────────────────────────────┘
                     │
         ┌───────────┴───────────┐
         ▼                       ▼
 ┌───────────────┐       ┌───────────────┐
-│  FastAPI      │       │  Local SQLite │
-│  Backend      │◄─────►│  (sessions)   │
-│  (Python)     │       │               │
+│  FastAPI      │◄─────►│  Local SQLite │
+│  Backend      │       │  (sessions +  │
+│  (Python)     │       │   trade data) │
 └───────────────┘       └───────────────┘
+        │
+        ▼
+┌───────────────────────────────────────┐
+│  Trade Services: matching, credits,   │
+│  reputation, verification, safety,    │
+│  algorithmic loops (DFS cycle detect) │
+└───────────────────────────────────────┘
 ```
 
 ---
@@ -115,6 +140,7 @@ cd server && source .venv/bin/activate && pytest -x -q
 - **Audit logging**: Every action traced with correlation IDs
 - **Rate limiting**: 60 req/min global, 10 req/min for analysis endpoints
 - **Request size caps**: 10MB maximum to prevent abuse
+- **Trade safety**: No self-trades, credit balance validation, pending-listing locking
 
 See [test_security.py](server/tests/test_security.py) for our security test coverage.
 
@@ -129,7 +155,7 @@ Every screen follows these rules:
 3. **Large touch targets** — minimum 48dp for all buttons
 4. **Undo everywhere** — mistakes are reversible
 5. **Energy modes** — "I have 2 minutes" / "I have 10 minutes" / "I can list today"
-6. **"I'm stuck" rescue** — algorithm suggests donate, recycle, or "not today" based on value and effort
+6. **"I'm stuck" rescue** — algorithm suggests donate, recycle, trade, or "not today" based on value and effort
 
 ---
 
@@ -140,23 +166,42 @@ Every screen follows these rules:
 | **Open Source** | ✅ MIT | ❌ Paid | ❌ | ⚠️ Rare |
 | **ADHD-Focused** | ✅ Core mission | ❌ | ❌ | ❌ |
 | **On-Device Detection** | ✅ ONNX | ❌ N/A | ❌ | ❌ Cloud-only |
-| **Resale Valuation** | ✅ Built-in | ❌ | ✅ | ❌ |
+| **Resale Valuation** | ✅ Built-in (6K+ items) | ❌ | ✅ | ❌ |
+| **Local Barter Trading** | ✅ No cash needed | ❌ | ❌ | ❌ |
 | **Privacy-First** | ✅ Default | ⚠️ | ❌ | ❌ |
 | **Free** | ✅ | ❌ Paid | ❌ Takes cut | ⚠️ Freemium |
 
+---
+
 ## 🗺️ Roadmap
 
+### Completed ✅
 - [x] Photo capture + on-device detection
 - [x] Item grouping + decision cards (Keep/Donate/Trash/Relocate/Maybe)
 - [x] Valuation + session summary
-- [x] Security hardening + test coverage
-- [ ] SQLite persistence for session history
+- [x] Security hardening + test coverage (170 tests)
+- [x] **Phase 1 — Barter/Trade Marketplace:**
+  - [x] Trade credit system (non-monetary credits)
+  - [x] Trade listings + nearby discovery
+  - [x] Propose / accept / decline trade flow
+  - [x] ND-friendly UX (templates, checklists, rules)
+  - [x] Reputation + review system
+  - [x] Safety checklists (10 categories)
+  - [x] Verified trader badges
+  - [x] Algorithmic multi-party trade matching
+  - [x] Expanded valuation engine (4,018 → 6,072 items)
+  - [x] Flutter trade UI (browse, list, match, wallet)
+
+### In Progress / Next
+- [ ] SQLite persistence for session history (drift)
 - [ ] Riverpod state management
 - [ ] AI-powered item analysis (backend vision model)
 - [ ] eBay marketplace integration
 - [ ] Listing draft generation
 - [ ] Public listing pages + buyer-agent endpoints (MCP/A2A)
 - [ ] iOS/Android app store release
+
+See [IMPLEMENTATION_PLAN_2026.md](IMPLEMENTATION_PLAN_2026.md) and [docs/plans/2026-04-28-barter-marketplace.md](docs/plans/2026-04-28-barter-marketplace.md) for detailed specs.
 
 ---
 
