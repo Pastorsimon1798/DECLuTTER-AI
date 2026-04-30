@@ -2,13 +2,22 @@
 
 > *The ADHD-friendly decluttering assistant. Snap a photo, see your items grouped, decide keep / donate / trash / relocate / maybe in a 10-minute sprint — then trade what you don't need with people nearby.*
 
-[![App CI](https://github.com/Pastorsimon1798/DECLuTTER-AI/actions/workflows/flutter-test.yml/badge.svg)](https://github.com/Pastorsimon1798/DECLuTTER-AI/actions)
-[![Server CI](https://github.com/Pastorsimon1798/DECLuTTER-AI/actions/workflows/server-test.yml/badge.svg)](https://github.com/Pastorsimon1798/DECLuTTER-AI/actions)
+[![App CI](https://github.com/KyaniteLabs/DECLuTTER-AI/actions/workflows/flutter-test.yml/badge.svg)](https://github.com/KyaniteLabs/DECLuTTER-AI/actions)
+[![Server CI](https://github.com/KyaniteLabs/DECLuTTER-AI/actions/workflows/server-test.yml/badge.svg)](https://github.com/KyaniteLabs/DECLuTTER-AI/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Flutter Version](https://img.shields.io/badge/Flutter-3.19+-blue.svg)](https://flutter.dev)
 [![Python Version](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://python.org)
 
 ---
+
+
+## Public Discovery
+
+**DECLuTTER AI** is an ADHD-friendly decluttering app for neurodivergent people, families, organizers, and resale workflows. It combines on-device object detection, simple decision cards, resale valuation, and local barter/trade tools so a messy room becomes a short, shame-free action sprint.
+
+**AI discovery:** [`llms.txt`](llms.txt) provides a compact project summary for AI assistants and search crawlers.
+
+**Best-fit searches:** ADHD decluttering app, AI decluttering assistant, neurodivergent productivity tool, Flutter object detection app, FastAPI marketplace backend, resale valuation app, local barter marketplace, privacy-first organization app.
 
 ## 🎯 Why DECLuTTER AI?
 
@@ -53,7 +62,7 @@ Adults with ADHD often feel **paralyzed by clutter**. Generic apps identify obje
 
 ## 🖼️ Screenshots
 
-> *Demo GIF and screenshots coming soon — follow [Discussions](https://github.com/Pastorsimon1798/DECLuTTER-AI/discussions) for updates!*
+> *Demo GIF and screenshots coming soon — follow [Discussions](https://github.com/KyaniteLabs/DECLuTTER-AI/discussions) for updates!*
 
 ---
 
@@ -65,7 +74,7 @@ Adults with ADHD often feel **paralyzed by clutter**. Generic apps identify obje
 # 1. Install Flutter 3.19+ from https://docs.flutter.dev/get-started/install
 
 # 2. Clone and setup
-git clone https://github.com/Pastorsimon1798/DECLuTTER-AI.git
+git clone https://github.com/KyaniteLabs/DECLuTTER-AI.git
 cd DECLuTTER-AI/app
 flutter pub get
 
@@ -211,10 +220,10 @@ We love contributors! Whether you're fixing a bug, adding a feature, improving d
 
 - 📖 [Contributing Guide](CONTRIBUTING.md)
 - 🛡️ [Code of Conduct](CODE_OF_CONDUCT.md)
-- 🐛 [Report a Bug](https://github.com/Pastorsimon1798/DECLuTTER-AI/issues/new?template=bug_report.md)
-- 💡 [Request a Feature](https://github.com/Pastorsimon1798/DECLuTTER-AI/issues/new?template=feature_request.md)
+- 🐛 [Report a Bug](https://github.com/KyaniteLabs/DECLuTTER-AI/issues/new?template=bug_report.md)
+- 💡 [Request a Feature](https://github.com/KyaniteLabs/DECLuTTER-AI/issues/new?template=feature_request.md)
 
-**Looking for your first contribution?** Check issues labeled [`good first issue`](https://github.com/Pastorsimon1798/DECLuTTER-AI/labels/good%20first%20issue).
+**Looking for your first contribution?** Check issues labeled [`good first issue`](https://github.com/KyaniteLabs/DECLuTTER-AI/labels/good%20first%20issue).
 
 ---
 
