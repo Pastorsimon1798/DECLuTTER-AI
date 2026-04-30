@@ -29,7 +29,7 @@ shapely==2.1.2
 numpy==2.3.4
 
 # Utilities
-python-dotenv==1.0.0
+python-dotenv==1.2.2
 httpx==0.25.1
 pydantic-settings==2.1.0
 
