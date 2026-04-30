@@ -1,0 +1,77 @@
+{
+  "types": {
+    "need": "Necesidad",
+    "offer": "Oferta",
+    "needs": "Necesidades",
+    "offers": "Ofertas",
+    "all": "Todas las Publicaciones"
+  },
+  "categories": {
+    "food": "Comida",
+    "housing": "Vivienda",
+    "transportation": "Transporte",
+    "childcare": "Cuidado Infantil",
+    "medical": "Médico",
+    "employment": "Empleo",
+    "education": "Educación",
+    "other": "Otro"
+  },
+  "list": {
+    "title": "Publicaciones de la Comunidad",
+    "createButton": "Crear Publicación",
+    "filterByType": "Filtrar por Tipo",
+    "filterByCategory": "Filtrar por Categoría",
+    "searchPlaceholder": "Buscar publicaciones...",
+    "noResults": "No se encontraron publicaciones",
+    "noResultsDescription": "Intenta ajustar tus filtros o crea una nueva publicación.",
+    "loadMore": "Cargar Más"
+  },
+  "create": {
+    "title": "Crear una Publicación",
+    "typeLabel": "Tipo de Publicación",
+    "typePlaceholder": "Selecciona el tipo de publicación",
+    "categoryLabel": "Categoría",
+    "categoryPlaceholder": "Selecciona una categoría",
+    "titleLabel": "Título",
+    "titlePlaceholder": "Breve descripción de tu necesidad u oferta",
+    "descriptionLabel": "Descripción",
+    "descriptionPlaceholder": "Proporciona detalles sobre lo que necesitas u ofreces...",
+    "locationLabel": "Ubicación",
+    "locationPlaceholder": "¿Dónde se necesita o está disponible?",
+    "urgencyLabel": "Urgencia",
+    "urgencyLow": "Baja - Puede esperar",
+    "urgencyMedium": "Media - Se necesita pronto",
+    "urgencyHigh": "Alta - Urgente",
+    "submitButton": "Publicar en la Comunidad",
+    "success": "¡Publicación creada exitosamente!",
+    "error": "Error al crear la publicación"
+  },
+  "detail": {
+    "postedBy": "Publicado por",
+    "location": "Ubicación",
+    "category": "Categoría",
+    "urgency": "Urgencia",
+    "description": "Descripción",
+    "interested": "Interesado",
+    "markResolved": "Marcar como Resuelto",
+    "resolved": "Resuelto",
+    "edit": "Editar Publicación",
+    "delete": "Eliminar Publicación",
+    "deleteConfirm": "¿Estás seguro de que quieres eliminar esta publicación?",
+    "deleteSuccess": "Publicación eliminada exitosamente",
+    "deleteError": "Error al eliminar la publicación"
+  },
+  "respond": {
+    "title": "Responder a esta publicación",
+    "messageLabel": "Tu Mensaje",
+    "messagePlaceholder": "Hazles saber cómo puedes ayudar o qué estás buscando...",
+    "submitButton": "Enviar Respuesta",
+    "success": "¡Respuesta enviada exitosamente!",
+    "error": "Error al enviar la respuesta"
+  },
+  "matches": {
+    "title": "Tus Conexiones",
+    "noMatches": "Aún no hay conexiones",
+    "noMatchesDescription": "Cuando alguien responda a tus publicaciones, las verás aquí."
+  }
+}

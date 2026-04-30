@@ -1,0 +1,84 @@
+{
+  "calendar": {
+    "title": "Turnos de Voluntariado",
+    "viewMode": "Vista",
+    "monthView": "Mes",
+    "weekView": "Semana",
+    "dayView": "Día",
+    "agendaView": "Agenda",
+    "today": "Hoy",
+    "filters": "Filtros",
+    "filterByOrg": "Filtrar por Organización",
+    "filterByStatus": "Filtrar por Estado",
+    "allOrganizations": "Todas las Organizaciones",
+    "statusAll": "Todos los Turnos",
+    "statusOpen": "Turnos Disponibles",
+    "statusFull": "Turnos Completos",
+    "mySignups": "Solo Mis Inscripciones",
+    "noShifts": "No hay turnos disponibles",
+    "noShiftsDescription": "Vuelve más tarde para nuevas oportunidades de voluntariado."
+  },
+  "myShifts": {
+    "title": "Mis Turnos de Voluntariado",
+    "tabs": {
+      "upcoming": "Próximos",
+      "past": "Pasados",
+      "all": "Todos"
+    },
+    "noShifts": "Aún no te has inscrito a ningún turno",
+    "noShiftsDescription": "Explora el calendario para encontrar oportunidades de voluntariado.",
+    "browseShifts": "Explorar Turnos",
+    "cancelSignup": "Cancelar Inscripción",
+    "cancelConfirm": "¿Estás seguro de que quieres cancelar esta inscripción?",
+    "cancelSuccess": "Inscripción cancelada",
+    "cancelError": "Error al cancelar la inscripción"
+  },
+  "detail": {
+    "organization": "Organización",
+    "date": "Fecha",
+    "time": "Hora",
+    "duration": "Duración",
+    "location": "Ubicación",
+    "coordinator": "Coordinador",
+    "contact": "Contacto",
+    "description": "Descripción",
+    "requirements": "Requisitos",
+    "capacity": "Capacidad",
+    "spotsAvailable": "{{count}} lugares disponibles",
+    "full": "Este turno está completo",
+    "signUp": "Inscribirse al Turno",
+    "signedUp": "¡Estás inscrito!",
+    "signUpSuccess": "¡Inscripción exitosa al turno!",
+    "signUpError": "Error al inscribirse al turno",
+    "reminder24h": "Recordatorio 24 horas antes",
+    "reminder2h": "Recordatorio 2 horas antes"
+  },
+  "organizations": {
+    "title": "Organizaciones",
+    "createButton": "Agregar Organización",
+    "noOrganizations": "No se encontraron organizaciones",
+    "create": {
+      "title": "Agregar Organización",
+      "nameLabel": "Nombre de la Organización",
+      "namePlaceholder": "Ingresa el nombre de la organización",
+      "descriptionLabel": "Descripción",
+      "descriptionPlaceholder": "Cuéntanos sobre esta organización...",
+      "websiteLabel": "Sitio Web",
+      "websitePlaceholder": "https://ejemplo.org",
+      "contactEmailLabel": "Correo de Contacto",
+      "contactEmailPlaceholder": "contacto@ejemplo.org",
+      "contactPhoneLabel": "Teléfono de Contacto",
+      "contactPhonePlaceholder": "(555) 123-4567",
+      "submitButton": "Crear Organización",
+      "success": "¡Organización creada exitosamente!",
+      "error": "Error al crear la organización"
+    }
+  },
+  "status": {
+    "open": "Disponible",
+    "full": "Completo",
+    "cancelled": "Cancelado",
+    "completed": "Completado",
+    "confirmed": "Confirmado"
+  }
+}

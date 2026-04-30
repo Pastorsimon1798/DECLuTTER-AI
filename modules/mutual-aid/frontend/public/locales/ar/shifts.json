@@ -1,0 +1,84 @@
+{
+  "calendar": {
+    "title": "مناوبات التطوع",
+    "viewMode": "عرض",
+    "monthView": "شهر",
+    "weekView": "أسبوع",
+    "dayView": "يوم",
+    "agendaView": "جدول الأعمال",
+    "today": "اليوم",
+    "filters": "المرشحات",
+    "filterByOrg": "التصفية حسب المنظمة",
+    "filterByStatus": "التصفية حسب الحالة",
+    "allOrganizations": "جميع المنظمات",
+    "statusAll": "جميع المناوبات",
+    "statusOpen": "المناوبات المفتوحة",
+    "statusFull": "المناوبات الممتلئة",
+    "mySignups": "تسجيلاتي فقط",
+    "noShifts": "لا توجد مناوبات متاحة",
+    "noShiftsDescription": "تحقق لاحقًا من فرص التطوع الجديدة."
+  },
+  "myShifts": {
+    "title": "مناوبات التطوع الخاصة بي",
+    "tabs": {
+      "upcoming": "القادمة",
+      "past": "الماضية",
+      "all": "الكل"
+    },
+    "noShifts": "لم تسجل في أي مناوبات بعد",
+    "noShiftsDescription": "تصفح التقويم للعثور على فرص التطوع.",
+    "browseShifts": "تصفح المناوبات",
+    "cancelSignup": "إلغاء التسجيل",
+    "cancelConfirm": "هل أنت متأكد أنك تريد إلغاء تسجيل هذه المناوبة؟",
+    "cancelSuccess": "تم إلغاء تسجيل المناوبة",
+    "cancelError": "فشل إلغاء التسجيل"
+  },
+  "detail": {
+    "organization": "المنظمة",
+    "date": "التاريخ",
+    "time": "الوقت",
+    "duration": "المدة",
+    "location": "الموقع",
+    "coordinator": "المنسق",
+    "contact": "الاتصال",
+    "description": "الوصف",
+    "requirements": "المتطلبات",
+    "capacity": "السعة",
+    "spotsAvailable": "{{count}} أماكن متاحة",
+    "full": "هذه المناوبة ممتلئة",
+    "signUp": "التسجيل في المناوبة",
+    "signedUp": "أنت مسجل!",
+    "signUpSuccess": "تم التسجيل في المناوبة بنجاح!",
+    "signUpError": "فشل التسجيل في المناوبة",
+    "reminder24h": "تذكير بعد 24 ساعة",
+    "reminder2h": "تذكير بعد ساعتين"
+  },
+  "organizations": {
+    "title": "المنظمات",
+    "createButton": "إضافة منظمة",
+    "noOrganizations": "لم يتم العثور على منظمات",
+    "create": {
+      "title": "إضافة منظمة",
+      "nameLabel": "اسم المنظمة",
+      "namePlaceholder": "أدخل اسم المنظمة",
+      "descriptionLabel": "الوصف",
+      "descriptionPlaceholder": "أخبرنا عن هذه المنظمة...",
+      "websiteLabel": "الموقع الإلكتروني",
+      "websitePlaceholder": "https://example.org",
+      "contactEmailLabel": "البريد الإلكتروني للاتصال",
+      "contactEmailPlaceholder": "contact@example.org",
+      "contactPhoneLabel": "هاتف الاتصال",
+      "contactPhonePlaceholder": "(555) 123-4567",
+      "submitButton": "إنشاء منظمة",
+      "success": "تم إنشاء المنظمة بنجاح!",
+      "error": "فشل إنشاء المنظمة"
+    }
+  },
+  "status": {
+    "open": "مفتوح",
+    "full": "ممتلئ",
+    "cancelled": "ملغى",
+    "completed": "مكتمل",
+    "confirmed": "مؤكد"
+  }
+}

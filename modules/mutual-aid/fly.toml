@@ -1,0 +1,51 @@
+# Fly.io deployment configuration for CommunityCircle Backend
+app = "communitycircle"
+primary_region = "iad"
+
+[build]
+  dockerfile = "backend/Dockerfile"
+
+[env]
+  ENVIRONMENT = "production"
+  API_V1_PREFIX = "/api"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[http_service.checks]]
+  grace_period = "10s"
+  interval = "30s"
+  method = "GET"
+  timeout = "5s"
+  path = "/health"
+
+[[ services ]]
+  protocol = "tcp"
+  internal_port = 8000
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+
+[[services.http_checks]]
+  interval = 10000
+  grace_period = "5s"
+  method = "get"
+  path = "/health"
+  protocol = "http"
+  timeout = 2000
+
+# Database configuration (managed separately via Fly PostgreSQL)
+# Run: fly postgres create --name communitycircle-db
+# Then: fly postgres attach communitycircle-db
+
+# Redis configuration (if needed)
+# Run: fly redis create --name communitycircle-redis

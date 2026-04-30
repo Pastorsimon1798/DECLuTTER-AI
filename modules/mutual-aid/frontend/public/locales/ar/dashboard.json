@@ -1,0 +1,42 @@
+{
+  "welcome": {
+    "title": "مرحبًا، {{name}}!",
+    "subtitle": "هذا ما يحدث في مجتمعك"
+  },
+  "stats": {
+    "activePosts": "المنشورات النشطة",
+    "upcomingShifts": "المناوبات القادمة",
+    "bookmarkedResources": "الموارد المحفوظة",
+    "connections": "الاتصالات"
+  },
+  "quickActions": {
+    "title": "إجراءات سريعة",
+    "createPost": "إنشاء منشور",
+    "findResources": "البحث عن موارد",
+    "browseShifts": "تصفح المناوبات",
+    "viewProfile": "عرض الملف الشخصي"
+  },
+  "recentActivity": {
+    "title": "النشاط الأخير",
+    "noActivity": "لا يوجد نشاط حديث",
+    "noActivityDescription": "ابدأ الاستكشاف لرؤية نشاطك هنا.",
+    "viewAll": "عرض الكل"
+  },
+  "upcomingEvents": {
+    "title": "الفعاليات القادمة",
+    "noEvents": "لا توجد فعاليات قادمة",
+    "viewCalendar": "عرض التقويم"
+  },
+  "notifications": {
+    "title": "الإشعارات",
+    "markAllRead": "تحديد الكل كمقروء",
+    "noNotifications": "لا توجد إشعارات جديدة",
+    "viewAll": "عرض جميع الإشعارات"
+  },
+  "communityInsights": {
+    "title": "رؤى المجتمع",
+    "mostNeeded": "الأكثر حاجة",
+    "mostOffered": "الأكثر عرضًا",
+    "trending": "الموضوعات الشائعة"
+  }
+}

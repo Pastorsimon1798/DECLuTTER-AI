@@ -1,0 +1,62 @@
+{
+  "welcome": {
+    "title": "MutualCircleへようこそ",
+    "subtitle": "あなたの相互扶助コミュニティ",
+    "greeting": "こんにちは、{{name}}さん！",
+    "newUser": "MutualCircleへようこそ！投稿を作成するか、コミュニティの提供内容を探索して始めましょう。"
+  },
+  "stats": {
+    "title": "あなたの概要",
+    "myPosts": "自分の投稿",
+    "myResponses": "自分の返信",
+    "activeMatches": "アクティブなコネクション",
+    "completedHelps": "完了",
+    "myShifts": "自分のシフト",
+    "upcomingShifts": "今後のシフト",
+    "hoursVolunteered": "ボランティア時間",
+    "bookmarkedResources": "ブックマークしたリソース",
+    "myPods": "自分のグループ",
+    "podCheckIns": "チェックイン",
+    "communityImpact": "コミュニティへの影響",
+    "totalPosts": "投稿総数",
+    "totalMembers": "メンバー総数",
+    "helpsSinceJoining": "参加以来の支援"
+  },
+  "quickActions": {
+    "title": "クイックアクション",
+    "createPost": "投稿を作成",
+    "browseNeeds": "ニーズを閲覧",
+    "findResources": "リソースを検索",
+    "viewShifts": "シフトを表示",
+    "myPods": "自分のグループ",
+    "checkIn": "チェックイン"
+  },
+  "recentActivity": {
+    "title": "最近のアクティビティ",
+    "noActivity": "まだアクティビティがありません",
+    "noActivityDescription": "あなたのアクティビティはここに表示されます。",
+    "viewAll": "すべて表示",
+    "newResponse": "あなたの投稿への新しい返信",
+    "matchCreated": "新しいコネクション",
+    "postCompleted": "投稿完了",
+    "upcomingShift": "今後のシフト"
+  },
+  "upcomingEvents": {
+    "title": "今後のイベント",
+    "noEvents": "今後のイベントはありません",
+    "noEventsDescription": "ボランティアの機会については後でご確認ください。",
+    "viewCalendar": "カレンダーを表示"
+  },
+  "notifications": {
+    "title": "通知",
+    "markAllRead": "すべて既読にする",
+    "noNotifications": "新しい通知はありません",
+    "viewAll": "すべての通知を表示"
+  },
+  "communityInsights": {
+    "title": "コミュニティインサイト",
+    "mostNeededCategories": "最も必要とされるカテゴリー",
+    "topVolunteers": "トップボランティア",
+    "recentMatches": "最近のコネクション"
+  }
+}

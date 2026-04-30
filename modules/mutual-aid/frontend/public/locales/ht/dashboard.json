@@ -1,0 +1,62 @@
+{
+  "welcome": {
+    "title": "Byenveni nan MutualCircle",
+    "subtitle": "Kominote sipò mityèl ou",
+    "greeting": "Bonjou, {{name}}!",
+    "newUser": "Byenveni nan MutualCircle! Kòmanse pa kreye yon pòs oswa eksplore sa kominote ou a ofri."
+  },
+  "stats": {
+    "title": "Apèsi Ou",
+    "myPosts": "Pòs Mwen",
+    "myResponses": "Repons Mwen",
+    "activeMatches": "Koneksyon Aktif",
+    "completedHelps": "Konplete",
+    "myShifts": "Chif Mwen",
+    "upcomingShifts": "Chif Kap Vini",
+    "hoursVolunteered": "Èdtan Volontè",
+    "bookmarkedResources": "Resous Anrejistre",
+    "myPods": "Gwoup Mwen",
+    "podCheckIns": "Chèk-in",
+    "communityImpact": "Enpak Kominote",
+    "totalPosts": "Total Pòs",
+    "totalMembers": "Total Manm",
+    "helpsSinceJoining": "Èd depi ou rantre"
+  },
+  "quickActions": {
+    "title": "Aksyon Rapid",
+    "createPost": "Kreye Pòs",
+    "browseNeeds": "Gade Bezwen",
+    "findResources": "Jwenn Resous",
+    "viewShifts": "Gade Chif",
+    "myPods": "Gwoup Mwen",
+    "checkIn": "Chèk In"
+  },
+  "recentActivity": {
+    "title": "Aktivite Resan",
+    "noActivity": "Pa gen aktivite ankò",
+    "noActivityDescription": "Aktivite ou ap parèt la a.",
+    "viewAll": "Gade tout",
+    "newResponse": "Nouvo repons pou pòs ou",
+    "matchCreated": "Nouvo koneksyon",
+    "postCompleted": "Pòs konplete",
+    "upcomingShift": "Chif kap vini"
+  },
+  "upcomingEvents": {
+    "title": "Evènman Kap Vini",
+    "noEvents": "Pa gen evènman kap vini",
+    "noEventsDescription": "Tcheke pita pou opòtinite volontè.",
+    "viewCalendar": "Gade kalandriye"
+  },
+  "notifications": {
+    "title": "Notifikasyon",
+    "markAllRead": "Make tout kòm li",
+    "noNotifications": "Pa gen nouvo notifikasyon",
+    "viewAll": "Gade tout notifikasyon"
+  },
+  "communityInsights": {
+    "title": "Enfòmasyon Kominote",
+    "mostNeededCategories": "Kategori ki pi bezwen",
+    "topVolunteers": "Top Volontè",
+    "recentMatches": "Koneksyon Resan"
+  }
+}

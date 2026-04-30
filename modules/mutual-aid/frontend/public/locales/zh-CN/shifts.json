@@ -1,0 +1,84 @@
+{
+  "calendar": {
+    "title": "志愿班次",
+    "viewMode": "查看",
+    "monthView": "月",
+    "weekView": "周",
+    "dayView": "日",
+    "agendaView": "议程",
+    "today": "今天",
+    "filters": "筛选",
+    "filterByOrg": "按组织筛选",
+    "filterByStatus": "按状态筛选",
+    "allOrganizations": "所有组织",
+    "statusAll": "所有班次",
+    "statusOpen": "开放班次",
+    "statusFull": "已满班次",
+    "mySignups": "仅我的报名",
+    "noShifts": "没有可用班次",
+    "noShiftsDescription": "稍后查看新的志愿机会。"
+  },
+  "myShifts": {
+    "title": "我的志愿班次",
+    "tabs": {
+      "upcoming": "即将到来",
+      "past": "过去",
+      "all": "全部"
+    },
+    "noShifts": "您还没有报名任何班次",
+    "noShiftsDescription": "浏览日历以查找志愿机会。",
+    "browseShifts": "浏览班次",
+    "cancelSignup": "取消报名",
+    "cancelConfirm": "您确定要取消此班次报名吗？",
+    "cancelSuccess": "班次报名已取消",
+    "cancelError": "取消报名失败"
+  },
+  "detail": {
+    "organization": "组织",
+    "date": "日期",
+    "time": "时间",
+    "duration": "持续时间",
+    "location": "位置",
+    "coordinator": "协调员",
+    "contact": "联系方式",
+    "description": "描述",
+    "requirements": "要求",
+    "capacity": "容量",
+    "spotsAvailable": "{{count}} 个名额可用",
+    "full": "此班次已满",
+    "signUp": "报名班次",
+    "signedUp": "您已报名！",
+    "signUpSuccess": "成功报名班次！",
+    "signUpError": "报名班次失败",
+    "reminder24h": "24小时提醒",
+    "reminder2h": "2小时提醒"
+  },
+  "organizations": {
+    "title": "组织",
+    "createButton": "添加组织",
+    "noOrganizations": "未找到组织",
+    "create": {
+      "title": "添加组织",
+      "nameLabel": "组织名称",
+      "namePlaceholder": "输入组织名称",
+      "descriptionLabel": "描述",
+      "descriptionPlaceholder": "告诉我们关于此组织的信息...",
+      "websiteLabel": "网站",
+      "websitePlaceholder": "https://example.org",
+      "contactEmailLabel": "联系邮箱",
+      "contactEmailPlaceholder": "contact@example.org",
+      "contactPhoneLabel": "联系电话",
+      "contactPhonePlaceholder": "(555) 123-4567",
+      "submitButton": "创建组织",
+      "success": "组织创建成功！",
+      "error": "创建组织失败"
+    }
+  },
+  "status": {
+    "open": "开放",
+    "full": "已满",
+    "cancelled": "已取消",
+    "completed": "已完成",
+    "confirmed": "已确认"
+  }
+}

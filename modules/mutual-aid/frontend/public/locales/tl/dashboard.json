@@ -1,0 +1,62 @@
+{
+  "welcome": {
+    "title": "Maligayang pagdating sa MutualCircle",
+    "subtitle": "Ang iyong mutual aid community",
+    "greeting": "Kumusta, {{name}}!",
+    "newUser": "Maligayang pagdating sa MutualCircle! Magsimula sa pamamagitan ng paggawa ng post o pag-explore ng kung ano ang mayroon sa iyong komunidad."
+  },
+  "stats": {
+    "title": "Iyong Overview",
+    "myPosts": "Aking mga Post",
+    "myResponses": "Aking mga Tugon",
+    "activeMatches": "Aktibong Koneksyon",
+    "completedHelps": "Tapos na",
+    "myShifts": "Aking mga Shift",
+    "upcomingShifts": "Paparating na Shift",
+    "hoursVolunteered": "Oras na Nag-volunteer",
+    "bookmarkedResources": "Naka-bookmark na Mapagkukunan",
+    "myPods": "Aking mga Pod",
+    "podCheckIns": "Mga Check-in",
+    "communityImpact": "Epekto sa Komunidad",
+    "totalPosts": "Kabuuang Post",
+    "totalMembers": "Kabuuang Miyembro",
+    "helpsSinceJoining": "Tulong mula nang sumali"
+  },
+  "quickActions": {
+    "title": "Mabilis na Aksyon",
+    "createPost": "Gumawa ng Post",
+    "browseNeeds": "Mag-browse ng Pangangailangan",
+    "findResources": "Maghanap ng Mapagkukunan",
+    "viewShifts": "Tingnan ang mga Shift",
+    "myPods": "Aking mga Pod",
+    "checkIn": "Mag-check In"
+  },
+  "recentActivity": {
+    "title": "Kamakailang Aktibidad",
+    "noActivity": "Walang aktibidad pa",
+    "noActivityDescription": "Ang iyong aktibidad ay lalabas dito.",
+    "viewAll": "Tingnan lahat",
+    "newResponse": "Bagong tugon sa iyong post",
+    "matchCreated": "Bagong koneksyon",
+    "postCompleted": "Tapos na ang post",
+    "upcomingShift": "Paparating na shift"
+  },
+  "upcomingEvents": {
+    "title": "Paparating na Event",
+    "noEvents": "Walang paparating na event",
+    "noEventsDescription": "Bumalik mamaya para sa mga volunteer opportunity.",
+    "viewCalendar": "Tingnan ang kalendaryo"
+  },
+  "notifications": {
+    "title": "Mga Notification",
+    "markAllRead": "Markahan lahat bilang nabasa",
+    "noNotifications": "Walang bagong notification",
+    "viewAll": "Tingnan lahat ng notification"
+  },
+  "communityInsights": {
+    "title": "Mga Insight ng Komunidad",
+    "mostNeededCategories": "Pinaka-kailangang Kategorya",
+    "topVolunteers": "Nangungunang Volunteer",
+    "recentMatches": "Kamakailang Koneksyon"
+  }
+}
