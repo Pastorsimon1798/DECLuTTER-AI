@@ -17,7 +17,11 @@ void main() {
 
     expect(find.text('Capture clutter zone'), findsOneWidget);
     expect(find.text('Snap zone'), findsOneWidget);
-    expect(find.byType(Scaffold), findsOneWidget);
+    expect(find.byType(DeclutterHomeScreen), findsOneWidget);
+
+    // Hidden trade tabs schedule short placeholder loads during app boot;
+    // drain them so this boot smoke test does not leak pending fake timers.
+    await tester.pump(const Duration(milliseconds: 600));
   });
 
   testWidgets('session timer logs decisions with notes', (tester) async {
