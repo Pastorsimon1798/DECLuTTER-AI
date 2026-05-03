@@ -11,6 +11,10 @@ on:
       - 'app/**'
       - '.github/workflows/app-ci.yml'
 
+concurrency:
+  group: app-ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   flutter-test:
     runs-on: blacksmith-2vcpu-ubuntu-2404

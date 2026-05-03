@@ -11,6 +11,10 @@ on:
       - 'server/**'
       - '.github/workflows/server-ci.yml'
 
+concurrency:
+  group: server-ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: blacksmith-2vcpu-ubuntu-2404
@@ -22,6 +26,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: 'server/pyproject.toml'
       - name: Install backend
         run: python -m pip install --upgrade pip && python -m pip install -e '.[dev]'
       - name: Run tests
