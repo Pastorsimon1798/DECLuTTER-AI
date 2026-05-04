@@ -31,3 +31,9 @@ packages = ["app"]
 [tool.pytest.ini_options]
 pythonpath = ["app"]
 addopts = "-q"
+
+[envs]
+default = "hatchling"
+
+[envs.dev]
+features = ["dev"]
