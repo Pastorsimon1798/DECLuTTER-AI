@@ -32,6 +32,12 @@ packages = ["app"]
 pythonpath = ["app"]
 addopts = "-q"
 
+[tool.hatch.envs.default]
+features = ["dev"]
+
+[tool.hatch.envs.default.scripts]
+test = "pytest"
+
 [tool.hatch.envs.dev]
 features = ["dev"]
 
