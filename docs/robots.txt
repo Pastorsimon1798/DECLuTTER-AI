@@ -1,4 +1,0 @@
-User-agent: *
-Allow: /
-
-Sitemap: https://pastorsimon1798.github.io/DECLuTTER-AI/sitemap.xml
