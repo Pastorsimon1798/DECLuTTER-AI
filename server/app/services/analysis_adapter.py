@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import logging
 import mimetypes
 import os
 import urllib.error
@@ -10,6 +11,8 @@ import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Protocol
+
+logger = logging.getLogger(__name__)
 
 from schemas.analysis import DetectedItem
 
@@ -973,6 +976,52 @@ class LMStudioNativeAnalysisAdapter:
 
 
 # ---------------------------------------------------------------------------
+# Fallback adapter (cloud primary → local fallback)
+# ---------------------------------------------------------------------------
+
+
+class FallbackAnalysisAdapter:
+    """Wraps a primary and fallback adapter with automatic failover.
+
+    Ties the primary (cloud) adapter first. If it raises RuntimeError due to
+    connection errors, timeouts, or HTTP 5xx responses, the request is
+    retried on the fallback (local) adapter. Logs which provider handled each
+    request for observability.
+    """
+
+    def __init__(
+        self,
+        primary: AnalysisAdapter,
+        fallback: AnalysisAdapter,
+        primary_name: str = "primary",
+        fallback_name: str = "fallback",
+    ) -> None:
+        self._primary = primary
+        self._fallback = fallback
+        self._primary_name = primary_name
+        self._fallback_name = fallback_name
+
+    def run(self, image_storage_key: str) -> AnalysisResult:
+        try:
+            result = self._primary.run(image_storage_key)
+            logger.info("analysis completed by %s provider", self._primary_name)
+            return result
+        except RuntimeError as exc:
+            logger.warning(
+                "primary provider (%s) failed: %s — falling back to %s",
+                self._primary_name,
+                exc,
+                self._fallback_name,
+            )
+            result = self._fallback.run(image_storage_key)
+            logger.info(
+                "analysis completed by fallback provider (%s)",
+                self._fallback_name,
+            )
+            return result
+
+
+# ---------------------------------------------------------------------------
 # Factory
 # ---------------------------------------------------------------------------
 
@@ -1038,12 +1087,15 @@ def create_analysis_adapter_from_env() -> AnalysisAdapter:
 
     config = _resolve_inference_config()
 
+    # Build the primary adapter based on the provider setting.
+    primary: AnalysisAdapter
+    primary_name = provider
+
     # Anthropic / Claude
     if provider in {"anthropic", "claude"}:
-        # Anthropic default base URL if none provided
         if not config["base_url"]:
             config["base_url"] = "https://api.anthropic.com"
-        return AnthropicAnalysisAdapter(
+        primary = AnthropicAnalysisAdapter(
             base_url=config["base_url"],
             model=config["model"],
             api_key=config["api_key"],
@@ -1052,10 +1104,10 @@ def create_analysis_adapter_from_env() -> AnalysisAdapter:
         )
 
     # Ollama native API (not the OpenAI-compatible wrapper)
-    if provider in {"ollama-native", "ollama_native", "ollama-direct", "ollama_direct"}:
+    elif provider in {"ollama-native", "ollama_native", "ollama-direct", "ollama_direct"}:
         if not config["base_url"]:
             config["base_url"] = "http://127.0.0.1:11434"
-        return OllamaAnalysisAdapter(
+        primary = OllamaAnalysisAdapter(
             base_url=config["base_url"],
             model=config["model"],
             api_key=config["api_key"],
@@ -1064,10 +1116,10 @@ def create_analysis_adapter_from_env() -> AnalysisAdapter:
         )
 
     # LM Studio native API (bypasses the buggy /v1 OpenAI-compatible wrapper)
-    if provider in {"lmstudio", "lm-studio", "lm_studio"}:
+    elif provider in {"lmstudio", "lm-studio", "lm_studio"}:
         if not config["base_url"]:
             config["base_url"] = "http://127.0.0.1:1234/v1"
-        return LMStudioNativeAnalysisAdapter(
+        primary = LMStudioNativeAnalysisAdapter(
             base_url=config["base_url"],
             model=config["model"],
             api_key=config["api_key"],
@@ -1077,26 +1129,10 @@ def create_analysis_adapter_from_env() -> AnalysisAdapter:
 
     # OpenAI-compatible catch-all (OpenAI, Groq, Together,
     # Azure OpenAI, Fireworks, Cerebras, Ollama's /v1 wrapper, etc.)
-    openai_compatible_providers = {
-        "openai",
-        "openai_compatible",
-        "openai-compatible",
-        "groq",
-        "together",
-        "togetherai",
-        "together-ai",
-        "fireworks",
-        "fireworks-ai",
-        "fireworks_ai",
-        "cerebras",
-        "home",
-        "home_inference",
-        "home-inference",
-    }
-    if provider in openai_compatible_providers:
+    elif provider in _OPENAI_COMPATIBLE_PROVIDERS:
         if not config["base_url"]:
             config["base_url"] = "https://api.openai.com/v1"
-        return OpenAICompatibleAnalysisAdapter(
+        primary = OpenAICompatibleAnalysisAdapter(
             base_url=config["base_url"],
             model=config["model"],
             api_key=config["api_key"],
@@ -1106,8 +1142,8 @@ def create_analysis_adapter_from_env() -> AnalysisAdapter:
 
     # Ultimate fallback: if a base_url and model are configured, treat as
     # OpenAI-compatible even if the provider name is unrecognized.
-    if config["base_url"] and config["model"]:
-        return OpenAICompatibleAnalysisAdapter(
+    elif config["base_url"] and config["model"]:
+        primary = OpenAICompatibleAnalysisAdapter(
             base_url=config["base_url"],
             model=config["model"],
             api_key=config["api_key"],
@@ -1115,7 +1151,63 @@ def create_analysis_adapter_from_env() -> AnalysisAdapter:
             max_tokens=config["max_tokens"],
         )
 
-    return MockStructuredAnalysisAdapter()
+    else:
+        return MockStructuredAnalysisAdapter()
+
+    # Wrap with fallback adapter when local fallback is opt-in enabled
+    # and a fallback URL is configured.
+    fallback_url = os.getenv("DECLUTTER_INFERENCE_FALLBACK_URL", "").strip()
+    allow_local = os.getenv("DECLUTTER_INFERENCE_ALLOW_LOCAL", "").strip()
+
+    if allow_local == "1" and fallback_url:
+        fallback_model = (
+            os.getenv("DECLUTTER_INFERENCE_FALLBACK_MODEL", "").strip()
+            or config["model"]
+        )
+        fallback_name = f"local:{fallback_model}@{_short_url(fallback_url)}"
+        primary_name = f"cloud:{config['model']}@{_short_url(config['base_url'])}"
+        fallback_adapter: AnalysisAdapter = OpenAICompatibleAnalysisAdapter(
+            base_url=fallback_url,
+            model=fallback_model,
+            api_key=None,
+            timeout_seconds=config["timeout_seconds"],
+            max_tokens=config["max_tokens"],
+        )
+        return FallbackAnalysisAdapter(
+            primary=primary,
+            fallback=fallback_adapter,
+            primary_name=primary_name,
+            fallback_name=fallback_name,
+        )
+
+    return primary
+
+
+_OPENAI_COMPATIBLE_PROVIDERS = {
+    "openai",
+    "openai_compatible",
+    "openai-compatible",
+    "groq",
+    "together",
+    "togetherai",
+    "together-ai",
+    "fireworks",
+    "fireworks-ai",
+    "fireworks_ai",
+    "cerebras",
+    "home",
+    "home_inference",
+    "home-inference",
+}
+
+
+def _short_url(url: str) -> str:
+    """Return a shortened form of a URL for logging (host only)."""
+    if not url:
+        return "(none)"
+    # Strip scheme and trailing path
+    cleaned = url.removeprefix("https://").removeprefix("http://")
+    return cleaned.split("/")[0]
 
 
 # ---------------------------------------------------------------------------

@@ -8,13 +8,16 @@ from unittest.mock import patch
 import pytest
 
 from app.services.analysis_adapter import (
+    AnalysisResult,
     AnthropicAnalysisAdapter,
+    FallbackAnalysisAdapter,
     LMStudioNativeAnalysisAdapter,
     MockStructuredAnalysisAdapter,
     OllamaAnalysisAdapter,
     OpenAICompatibleAnalysisAdapter,
     create_analysis_adapter_from_env,
 )
+from app.schemas.analysis import DetectedItem
 
 
 class TestCreateAnalysisAdapterFromEnv:
@@ -166,3 +169,115 @@ class TestCreateAnalysisAdapterFromEnv:
         assert isinstance(adapter, OpenAICompatibleAnalysisAdapter)
         assert adapter.timeout_seconds == 30.0
         assert adapter.max_tokens == 512
+
+    def test_fallback_wraps_primary_when_allow_local_set(self) -> None:
+        env = {
+            "DECLUTTER_ANALYSIS_PROVIDER": "openai",
+            "DECLUTTER_INFERENCE_BASE_URL": "https://api.openai.com/v1",
+            "DECLUTTER_INFERENCE_MODEL": "gpt-4o-mini",
+            "DECLUTTER_INFERENCE_API_KEY": "sk-test",
+            "DECLUTTER_INFERENCE_ALLOW_LOCAL": "1",
+            "DECLUTTER_INFERENCE_FALLBACK_URL": "http://host.docker.internal:8085/v1",
+            "DECLUTTER_INFERENCE_FALLBACK_MODEL": "Qwen3.5-0.8B-Q4_K_M",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            adapter = create_analysis_adapter_from_env()
+        assert isinstance(adapter, FallbackAnalysisAdapter)
+        assert isinstance(adapter._primary, OpenAICompatibleAnalysisAdapter)
+        assert isinstance(adapter._fallback, OpenAICompatibleAnalysisAdapter)
+        assert adapter._fallback.base_url == "http://host.docker.internal:8085/v1"
+        assert adapter._fallback.model == "Qwen3.5-0.8B-Q4_K_M"
+
+    def test_no_fallback_without_allow_local(self) -> None:
+        env = {
+            "DECLUTTER_ANALYSIS_PROVIDER": "openai",
+            "DECLUTTER_INFERENCE_BASE_URL": "https://api.openai.com/v1",
+            "DECLUTTER_INFERENCE_MODEL": "gpt-4o-mini",
+            "DECLUTTER_INFERENCE_FALLBACK_URL": "http://host.docker.internal:8085/v1",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            adapter = create_analysis_adapter_from_env()
+        assert isinstance(adapter, OpenAICompatibleAnalysisAdapter)
+        assert not isinstance(adapter, FallbackAnalysisAdapter)
+
+    def test_no_fallback_without_fallback_url(self) -> None:
+        env = {
+            "DECLUTTER_ANALYSIS_PROVIDER": "openai",
+            "DECLUTTER_INFERENCE_BASE_URL": "https://api.openai.com/v1",
+            "DECLUTTER_INFERENCE_MODEL": "gpt-4o-mini",
+            "DECLUTTER_INFERENCE_ALLOW_LOCAL": "1",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            adapter = create_analysis_adapter_from_env()
+        assert isinstance(adapter, OpenAICompatibleAnalysisAdapter)
+        assert not isinstance(adapter, FallbackAnalysisAdapter)
+
+    def test_fallback_model_defaults_to_primary_model(self) -> None:
+        env = {
+            "DECLUTTER_ANALYSIS_PROVIDER": "openai",
+            "DECLUTTER_INFERENCE_BASE_URL": "https://api.openai.com/v1",
+            "DECLUTTER_INFERENCE_MODEL": "gpt-4o-mini",
+            "DECLUTTER_INFERENCE_ALLOW_LOCAL": "1",
+            "DECLUTTER_INFERENCE_FALLBACK_URL": "http://localhost:8085/v1",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            adapter = create_analysis_adapter_from_env()
+        assert isinstance(adapter, FallbackAnalysisAdapter)
+        assert adapter._fallback.model == "gpt-4o-mini"
+
+
+class TestFallbackAnalysisAdapter:
+    """Tests for the FallbackAnalysisAdapter failover logic."""
+
+    @staticmethod
+    def _make_result(label: str) -> AnalysisResult:
+        return AnalysisResult(
+            items=[DetectedItem(label=label, confidence=0.9, estimated_value_usd=5.0)],
+            engine="test",
+            structured_output_version="test-v1",
+            total_estimated_value_usd=5.0,
+        )
+
+    def test_primary_succeeds_no_fallback(self) -> None:
+        result = self._make_result("primary-item")
+        primary = MockStructuredAnalysisAdapter()
+        fallback = MockStructuredAnalysisAdapter()
+        adapter = FallbackAnalysisAdapter(
+            primary=primary,
+            fallback=fallback,
+            primary_name="cloud",
+            fallback_name="local",
+        )
+        # MockStructuredAnalysisAdapter always succeeds, so patch primary.run
+        with patch.object(primary, "run", return_value=result):
+            output = adapter.run("test-key")
+        assert output.items[0].label == "primary-item"
+
+    def test_fallback_on_primary_failure(self) -> None:
+        result = self._make_result("fallback-item")
+        primary = MockStructuredAnalysisAdapter()
+        fallback = MockStructuredAnalysisAdapter()
+        adapter = FallbackAnalysisAdapter(
+            primary=primary,
+            fallback=fallback,
+            primary_name="cloud",
+            fallback_name="local",
+        )
+        with patch.object(primary, "run", side_effect=RuntimeError("cloud down")):
+            with patch.object(fallback, "run", return_value=result):
+                output = adapter.run("test-key")
+        assert output.items[0].label == "fallback-item"
+
+    def test_raises_if_both_fail(self) -> None:
+        primary = MockStructuredAnalysisAdapter()
+        fallback = MockStructuredAnalysisAdapter()
+        adapter = FallbackAnalysisAdapter(
+            primary=primary,
+            fallback=fallback,
+            primary_name="cloud",
+            fallback_name="local",
+        )
+        with patch.object(primary, "run", side_effect=RuntimeError("cloud down")):
+            with patch.object(fallback, "run", side_effect=RuntimeError("local down")):
+                with pytest.raises(RuntimeError, match="local down"):
+                    adapter.run("test-key")
